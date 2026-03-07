@@ -1,0 +1,364 @@
+[
+  {
+    "id": 1,
+    "name": "正常注册-包含邀请码",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "john.doe@example.com",
+      "invite_code": "ABC123",
+      "password": "SecurePass123",
+      "username": "john_doe_2026"
+    },
+    "expected_status": 201,
+    "assertions": [
+      {
+        "expected": 201,
+        "type": "status_code"
+      },
+      {
+        "expected": 20000,
+        "path": "$.code",
+        "type": "json_path"
+      },
+      {
+        "expected": "$NOT_NULL",
+        "path": "$.data.user_id",
+        "type": "json_path"
+      },
+      {
+        "expected": "$NOT_NULL",
+        "path": "$.data.access_token",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 2,
+    "name": "正常注册-不包含邀请码",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "jane@example.com",
+      "password": "MyPass123",
+      "username": "jane_test"
+    },
+    "expected_status": 201,
+    "assertions": [
+      {
+        "expected": 201,
+        "type": "status_code"
+      },
+      {
+        "expected": 20000,
+        "path": "$.code",
+        "type": "json_path"
+      },
+      {
+        "expected": "Registration successful",
+        "path": "$.message",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 3,
+    "name": "异常-用户名长度小于4",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "bob@example.com",
+      "password": "Pass1234",
+      "username": "bob"
+    },
+    "expected_status": 400,
+    "assertions": [
+      {
+        "expected": 400,
+        "type": "status_code"
+      },
+      {
+        "expected": 40001,
+        "path": "$.code",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 4,
+    "name": "异常-用户名长度大于20",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "longuser@example.com",
+      "password": "Pass1234",
+      "username": "very_long_username_here_exceeds_limit"
+    },
+    "expected_status": 400,
+    "assertions": [
+      {
+        "expected": 400,
+        "type": "status_code"
+      },
+      {
+        "expected": 40001,
+        "path": "$.code",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 5,
+    "name": "异常-用户名包含非法字符",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "user@example.com",
+      "password": "Pass1234",
+      "username": "user@name"
+    },
+    "expected_status": 400,
+    "assertions": [
+      {
+        "expected": 400,
+        "type": "status_code"
+      },
+      {
+        "expected": 40001,
+        "path": "$.code",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 6,
+    "name": "异常-邮箱格式错误",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "invalid-email-format",
+      "password": "Pass1234",
+      "username": "valid_user"
+    },
+    "expected_status": 400,
+    "assertions": [
+      {
+        "expected": 400,
+        "type": "status_code"
+      },
+      {
+        "expected": 40001,
+        "path": "$.code",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 7,
+    "name": "异常-密码长度不足8位",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "short@example.com",
+      "password": "Pass1",
+      "username": "shortpass"
+    },
+    "expected_status": 400,
+    "assertions": [
+      {
+        "expected": 400,
+        "type": "status_code"
+      },
+      {
+        "expected": 40001,
+        "path": "$.code",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 8,
+    "name": "异常-密码缺少大写字母",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "noupper@example.com",
+      "password": "securepass123",
+      "username": "noupper"
+    },
+    "expected_status": 400,
+    "assertions": [
+      {
+        "expected": 400,
+        "type": "status_code"
+      },
+      {
+        "expected": 40001,
+        "path": "$.code",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 9,
+    "name": "异常-密码缺少数字",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "nodigit@example.com",
+      "password": "SecurePassword",
+      "username": "nodigit"
+    },
+    "expected_status": 400,
+    "assertions": [
+      {
+        "expected": 400,
+        "type": "status_code"
+      },
+      {
+        "expected": 40001,
+        "path": "$.code",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 10,
+    "name": "异常-缺少必填参数",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "username": "missingfield"
+    },
+    "expected_status": 400,
+    "assertions": [
+      {
+        "expected": 400,
+        "type": "status_code"
+      },
+      {
+        "expected": 40001,
+        "path": "$.code",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 11,
+    "name": "异常-邮箱已注册",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "john.doe@example.com",
+      "password": "NewPass123",
+      "username": "newuser_01"
+    },
+    "expected_status": 409,
+    "assertions": [
+      {
+        "expected": 409,
+        "type": "status_code"
+      },
+      {
+        "expected": 40901,
+        "path": "$.code",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  },
+  {
+    "id": 12,
+    "name": "异常-用户名已存在",
+    "api_path": "/api/v1/auth/register",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {},
+    "body": {
+      "email": "another.email@example.com",
+      "password": "NewPass123",
+      "username": "john_doe_2026"
+    },
+    "expected_status": 409,
+    "assertions": [
+      {
+        "expected": 409,
+        "type": "status_code"
+      },
+      {
+        "expected": 40902,
+        "path": "$.code",
+        "type": "json_path"
+      }
+    ],
+    "created_at": "2026-03-07T02:44:31",
+    "updated_at": "2026-03-07T02:44:31"
+  }
+]
