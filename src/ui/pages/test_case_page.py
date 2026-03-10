@@ -322,85 +322,147 @@ class TestCasePage(BasePage):
     
     def _init_content(self) -> None:
         config_group = QGroupBox("接口配置")
-        config_layout = QVBoxLayout(config_group)
-        config_layout.setSpacing(6)
-        
-        row1 = QHBoxLayout()
+        config_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 13px;
+                margin-top: 6px;
+                padding-top: 8px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        config_layout = QHBoxLayout(config_group)
+        config_layout.setSpacing(15)
+        config_layout.setContentsMargins(15, 10, 15, 10)
+
         base_url_label = QLabel("Base URL:")
-        base_url_label.setFixedWidth(70)
+        base_url_label.setStyleSheet("font-weight: normal;")
+        config_layout.addWidget(base_url_label)
         self._base_url_edit = QLineEdit()
-        self._base_url_edit.setPlaceholderText("例如: http://192.168.1.100:8080")
+        self._base_url_edit.setPlaceholderText("http://192.168.1.100:8080")
+        self._base_url_edit.setMinimumWidth(200)
         style_manager.apply_style(self._base_url_edit, "input")
         self._base_url_edit.textChanged.connect(self._save_config)
-        row1.addWidget(base_url_label)
-        row1.addWidget(self._base_url_edit)
-        config_layout.addLayout(row1)
-        
-        row2 = QHBoxLayout()
+        config_layout.addWidget(self._base_url_edit)
+
         api_path_label = QLabel("接口路径:")
-        api_path_label.setFixedWidth(70)
+        api_path_label.setStyleSheet("font-weight: normal;")
+        config_layout.addWidget(api_path_label)
         self._api_path_edit = QLineEdit()
-        self._api_path_edit.setPlaceholderText("例如: /api/v1/users")
+        self._api_path_edit.setPlaceholderText("/api/v1/users")
+        self._api_path_edit.setMinimumWidth(150)
         style_manager.apply_style(self._api_path_edit, "input")
         self._api_path_edit.textChanged.connect(self._save_config)
-        row2.addWidget(api_path_label)
-        row2.addWidget(self._api_path_edit)
-        config_layout.addLayout(row2)
-        
-        row3 = QHBoxLayout()
+        config_layout.addWidget(self._api_path_edit)
+
         headers_label = QLabel("请求头:")
-        headers_label.setFixedWidth(70)
+        headers_label.setStyleSheet("font-weight: normal;")
+        config_layout.addWidget(headers_label)
         self._headers_edit = QLineEdit()
-        self._headers_edit.setPlaceholderText('例如: {"Authorization": "Bearer token123"} 或 需要在Header中传入token进行认证')
-        style_manager.apply_style(self._headers_edit, "input")
+        self._headers_edit.setPlaceholderText('{"Authorization": "Bearer token"}')
+        self._headers_edit.setMinimumWidth(200)
+        self._headers_edit.setVisible(False)
         self._headers_edit.textChanged.connect(self._save_config)
-        row3.addWidget(headers_label)
-        row3.addWidget(self._headers_edit)
-        config_layout.addLayout(row3)
-        
+        config_layout.addWidget(self._headers_edit)
+
+        self._headers_btn = QPushButton("点击编辑")
+        self._headers_btn.setMinimumWidth(100)
+        self._headers_btn.clicked.connect(self._show_headers_dialog)
+        style_manager.apply_style(self._headers_btn, "button_secondary")
+        config_layout.addWidget(self._headers_btn)
+
+        self._headers_status_label = QLabel("")
+        self._headers_status_label.setStyleSheet("font-weight: normal; color: #999; font-size: 12px;")
+        config_layout.addWidget(self._headers_status_label)
+
+        config_layout.addStretch()
         style_manager.apply_style(config_group, "group_box")
         self.add_widget(config_group)
-        
-        input_group = QGroupBox("接口文档")
-        input_layout = QVBoxLayout(input_group)
-        input_layout.setSpacing(6)
-        
-        input_header = QHBoxLayout()
+
+        second_bar = QHBoxLayout()
+        second_bar.setSpacing(10)
+
+        doc_group = QGroupBox("接口文档")
+        doc_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 13px;
+                margin-top: 6px;
+                padding-top: 8px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        doc_layout = QHBoxLayout(doc_group)
+        doc_layout.setSpacing(8)
+        doc_layout.setContentsMargins(10, 5, 10, 5)
+
+        self._doc_status_label = QLabel("未填写")
+        self._doc_status_label.setStyleSheet("font-weight: normal; color: #999; font-size: 12px;")
+        doc_layout.addWidget(self._doc_status_label)
+
+        self._edit_doc_btn = QPushButton("编辑文档")
+        self._edit_doc_btn.clicked.connect(self._show_doc_dialog)
+        style_manager.apply_style(self._edit_doc_btn, "button_secondary")
+        doc_layout.addWidget(self._edit_doc_btn)
+
         self._upload_btn = QPushButton("上传文件")
         self._upload_btn.clicked.connect(self._upload_file)
         style_manager.apply_style(self._upload_btn, "button_secondary")
-        input_header.addWidget(self._upload_btn)
-        
-        self._clear_btn = QPushButton("清空")
-        self._clear_btn.clicked.connect(self._clear_input)
-        style_manager.apply_style(self._clear_btn, "button_secondary")
-        input_header.addWidget(self._clear_btn)
-        
-        input_header.addStretch()
-        
-        model_label = QLabel("AI模型:")
-        input_header.addWidget(model_label)
-        
+        doc_layout.addWidget(self._upload_btn)
+
+        self._clear_doc_btn = QPushButton("清空")
+        self._clear_doc_btn.clicked.connect(self._clear_doc)
+        style_manager.apply_style(self._clear_doc_btn, "button_secondary")
+        doc_layout.addWidget(self._clear_doc_btn)
+
+        doc_layout.addStretch()
+        second_bar.addWidget(doc_group)
+
+        ai_group = QGroupBox("AI生成")
+        ai_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 13px;
+                margin-top: 6px;
+                padding-top: 8px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        ai_layout = QHBoxLayout(ai_group)
+        ai_layout.setSpacing(8)
+        ai_layout.setContentsMargins(10, 5, 10, 5)
+
+        model_label = QLabel("模型:")
+        model_label.setStyleSheet("font-weight: normal;")
+        ai_layout.addWidget(model_label)
+
         self._model_combo = QComboBox()
         self._model_combo.setMinimumWidth(150)
         style_manager.apply_style(self._model_combo, "combobox")
-        input_header.addWidget(self._model_combo)
-        
+        ai_layout.addWidget(self._model_combo)
+
         self._generate_btn = QPushButton("生成测试用例")
         self._generate_btn.clicked.connect(self._generate_test_cases)
         style_manager.apply_style(self._generate_btn, "button_primary")
-        input_header.addWidget(self._generate_btn)
-        
-        input_layout.addLayout(input_header)
-        
-        self._doc_input = QTextEdit()
-        self._doc_input.setMaximumHeight(100)
-        self._doc_input.setPlaceholderText(
-            "请在此输入接口文档内容，或上传 Markdown 文件..."
-        )
-        style_manager.apply_style(self._doc_input, "input")
-        input_layout.addWidget(self._doc_input)
-        
+        ai_layout.addWidget(self._generate_btn)
+
+        ai_layout.addStretch()
+        second_bar.addWidget(ai_group)
+
+        self.add_layout(second_bar)
+
         progress_layout = QHBoxLayout()
         self._progress_bar = QProgressBar()
         self._progress_bar.setRange(0, 0)
@@ -408,75 +470,172 @@ class TestCasePage(BasePage):
         self._progress_bar.setFixedHeight(18)
         style_manager.apply_style(self._progress_bar, "progress_bar")
         progress_layout.addWidget(self._progress_bar)
-        
+
         self._status_label = QLabel("")
         self._status_label.setStyleSheet("color: #757575;")
         progress_layout.addWidget(self._status_label)
         progress_layout.addStretch()
-        input_layout.addLayout(progress_layout)
-        
-        style_manager.apply_style(input_group, "group_box")
-        self.add_widget(input_group)
-        
+        self.add_layout(progress_layout)
+
         table_group = QGroupBox("测试用例列表")
         table_layout = QVBoxLayout(table_group)
-        
+        table_layout.setSpacing(8)
+
         table_btn_layout = QHBoxLayout()
-        
+        table_btn_layout.setSpacing(8)
+
         self._select_all_cb = QCheckBox("全选")
         self._select_all_cb.stateChanged.connect(self._on_select_all)
         table_btn_layout.addWidget(self._select_all_cb)
-        
+
         self._add_row_btn = QPushButton("添加行")
         self._add_row_btn.clicked.connect(self._add_row)
         style_manager.apply_style(self._add_row_btn, "button_secondary")
         table_btn_layout.addWidget(self._add_row_btn)
-        
+
         self._delete_row_btn = QPushButton("删除勾选")
         self._delete_row_btn.clicked.connect(self._delete_selected_rows)
         style_manager.apply_style(self._delete_row_btn, "button_secondary")
         table_btn_layout.addWidget(self._delete_row_btn)
-        
+
         self._clear_table_btn = QPushButton("清空表格")
         self._clear_table_btn.clicked.connect(self._clear_table)
         style_manager.apply_style(self._clear_table_btn, "button_secondary")
         table_btn_layout.addWidget(self._clear_table_btn)
-        
+
         table_btn_layout.addStretch()
-        
+
         self._count_label = QLabel("共 0 条")
-        self._count_label.setStyleSheet("color: #666;")
+        self._count_label.setStyleSheet("color: #666; font-size: 13px;")
         table_btn_layout.addWidget(self._count_label)
-        
+
         self._generate_script_btn = QPushButton("去生成脚本")
         self._generate_script_btn.clicked.connect(self._go_to_script_page)
         style_manager.apply_style(self._generate_script_btn, "button_primary")
         table_btn_layout.addWidget(self._generate_script_btn)
-        
+
         table_layout.addLayout(table_btn_layout)
-        
+
         self._table = QTableWidget()
         self._table.setColumnCount(7)
         self._table.setHorizontalHeaderLabels(["勾选", "用例名称", "方法", "请求参数", "请求体", "HTTP状态码", "断言"])
         self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
         self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
-        self._table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self._table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
+        self._table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Interactive)
         self._table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
         self._table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
         self._table.setColumnWidth(0, 50)
+        self._table.setColumnWidth(1, 180)
         self._table.setColumnWidth(2, 80)
-        self._table.setColumnWidth(5, 120)
+        self._table.setColumnWidth(3, 200)
+        self._table.setColumnWidth(4, 200)
+        self._table.setColumnWidth(5, 100)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setAlternatingRowColors(True)
-        self._table.verticalHeader().setDefaultSectionSize(30)
+        self._table.verticalHeader().setDefaultSectionSize(36)
+        self._table.verticalHeader().setVisible(False)
+        self._table.horizontalHeader().setMinimumSectionSize(50)
         self._table.cellDoubleClicked.connect(self._on_cell_double_clicked)
-        style_manager.apply_style(self._table, "table")
-        table_layout.addWidget(self._table)
-        
+        self._table.setStyleSheet("""
+            QTableWidget {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background-color: #fff;
+                gridline-color: #eee;
+                font-size: 13px;
+            }
+            QTableWidget::item {
+                padding: 6px;
+                border-bottom: 1px solid #eee;
+            }
+            QTableWidget::item:selected {
+                background-color: #e3f2fd;
+                color: #333;
+            }
+            QHeaderView::section {
+                background-color: #f5f5f5;
+                padding: 8px;
+                border: none;
+                border-bottom: 2px solid #ddd;
+                font-weight: bold;
+                font-size: 13px;
+            }
+        """)
+        table_layout.addWidget(self._table, 1)
+
         style_manager.apply_style(table_group, "group_box")
-        self.add_widget(table_group)
+        self.add_widget(table_group, 1)
+
+        self._doc_input = QTextEdit()
+        self._doc_input.setVisible(False)
+        self._doc_input.textChanged.connect(self._on_doc_changed)
+
+    def _show_doc_dialog(self) -> None:
+        current_doc = self._doc_input.toPlainText()
+        dialog = TextEditDialog(
+            "编辑接口文档",
+            current_doc,
+            "请在此输入接口文档内容，支持 Markdown、JSON、YAML 等格式...",
+            self
+        )
+        dialog.setMinimumSize(700, 500)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._doc_input.setPlainText(dialog.get_result())
+            self._update_doc_status()
+
+    def _clear_doc(self) -> None:
+        self._doc_input.clear()
+        self._update_doc_status()
+
+    def _on_doc_changed(self) -> None:
+        self._update_doc_status()
+
+    def _update_doc_status(self) -> None:
+        doc = self._doc_input.toPlainText().strip()
+        if doc:
+            lines = doc.count('\n') + 1
+            chars = len(doc)
+            self._doc_status_label.setText(f"已填写 ({lines}行, {chars}字)")
+            self._doc_status_label.setStyleSheet("font-weight: normal; color: #4caf50; font-size: 12px;")
+        else:
+            self._doc_status_label.setText("未填写")
+            self._doc_status_label.setStyleSheet("font-weight: normal; color: #999; font-size: 12px;")
+        set_api_doc(doc)
+
+    def _show_headers_dialog(self) -> None:
+        current_headers = self._headers_edit.text()
+        dialog = TextEditDialog(
+            "编辑请求头",
+            current_headers,
+            "请输入请求头，支持JSON格式或自然语言描述：\n\n"
+            "示例1（JSON格式）：\n"
+            '{\n'
+            '  "Authorization": "Bearer your_token",\n'
+            '  "Content-Type": "application/json"\n'
+            '}\n\n'
+            "示例2（自然语言）：需要在Header中传入token进行认证",
+            self
+        )
+        dialog.setMinimumSize(500, 400)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            result = dialog.get_result()
+            self._headers_edit.setText(result)
+            self._update_headers_status()
+
+    def _update_headers_status(self) -> None:
+        headers = self._headers_edit.text().strip()
+        if headers:
+            if headers.startswith("{"):
+                self._headers_status_label.setText("已配置 (JSON)")
+                self._headers_status_label.setStyleSheet("font-weight: normal; color: #4caf50; font-size: 12px;")
+            else:
+                chars = len(headers)
+                self._headers_status_label.setText(f"已配置 ({chars}字)")
+                self._headers_status_label.setStyleSheet("font-weight: normal; color: #4caf50; font-size: 12px;")
+        else:
+            self._headers_status_label.setText("")
     
     def _on_select_all(self, state: int) -> None:
         checked = state == Qt.CheckState.Checked.value

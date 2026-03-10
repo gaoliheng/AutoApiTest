@@ -39,8 +39,8 @@ class BasePage(QWidget):
             line.setFixedHeight(1)
             self._main_layout.addWidget(line)
     
-    def add_widget(self, widget: QWidget) -> None:
-        self._main_layout.addWidget(widget)
+    def add_widget(self, widget: QWidget, stretch: int = 0) -> None:
+        self._main_layout.addWidget(widget, stretch)
     
     def add_layout(self, layout: QHBoxLayout | QVBoxLayout) -> None:
         self._main_layout.addLayout(layout)
