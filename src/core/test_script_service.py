@@ -8,7 +8,8 @@ from typing import Any, Optional
 
 from ai.client import AIClient, ChatMessage, MessageRole
 from ai.prompts import TestCase as PromptTestCase
-from ai.prompts import TestScriptPrompt
+from ai.prompts import TestScriptPrompt, CodeFixPrompt
+from core.code_validator import CodeValidator, ValidationResult
 from models.test_case import TestCase
 from models.test_script import TestScript
 
@@ -20,6 +21,9 @@ class ScriptGenerateRequest:
     additional_requirements: Optional[str] = None
     model_id: Optional[int] = None
     use_ai_generation: bool = True
+    enable_validation: bool = True
+    auto_fix: bool = True
+    max_fix_attempts: int = 3
 
 
 @dataclass
@@ -42,6 +46,8 @@ class GenerateResult:
     success: bool
     message: str
     scripts: list[TestScript] = field(default_factory=list)
+    validation_result: Optional[ValidationResult] = None
+    fixed_by_ai: bool = False
 
 
 class TestScriptService:
@@ -128,11 +134,38 @@ class TestScriptService:
 
             parsed_scripts = TestScriptPrompt.parse_response(response)
 
+            if not parsed_scripts:
+                return GenerateResult(
+                    success=False,
+                    message="AI 未能生成有效的测试脚本",
+                )
+
             saved_scripts: list[TestScript] = []
+            final_validation_result: Optional[ValidationResult] = None
+            fixed_by_ai = False
+
             for idx, script in enumerate(parsed_scripts):
+                code = script.code
+
+                if request.enable_validation:
+                    validation_result = CodeValidator.validate_and_fix(code)
+                    final_validation_result = validation_result
+
+                    if not validation_result.valid and request.auto_fix:
+                        code, fixed_by_ai = TestScriptService._try_ai_fix(
+                            code=validation_result.fixed_code or code,
+                            validation_result=validation_result,
+                            client=client,
+                            max_attempts=request.max_fix_attempts,
+                        )
+                        if fixed_by_ai:
+                            final_validation_result = CodeValidator.validate(code)
+                    elif validation_result.fixed_code:
+                        code = validation_result.fixed_code
+
                 test_script = TestScript(
                     name=f"{test_cases[idx].name}_script" if idx < len(test_cases) else f"test_script_{idx}",
-                    content=script.code,
+                    content=code,
                     test_case_ids=request.test_case_ids,
                 )
                 test_script.save()
@@ -142,6 +175,8 @@ class TestScriptService:
                 success=True,
                 message=f"成功生成并保存 {len(saved_scripts)} 个测试脚本",
                 scripts=saved_scripts,
+                validation_result=final_validation_result,
+                fixed_by_ai=fixed_by_ai,
             )
 
         except Exception as e:
@@ -155,11 +190,50 @@ class TestScriptService:
                 client.close()
 
     @staticmethod
+    def _try_ai_fix(
+        code: str,
+        validation_result: ValidationResult,
+        client: AIClient,
+        max_attempts: int = 3,
+    ) -> tuple[str, bool]:
+        error_messages = [str(issue) for issue in validation_result.errors]
+        if not error_messages:
+            return code, False
+
+        for attempt in range(max_attempts):
+            messages_data = CodeFixPrompt.build_messages(code, error_messages)
+            messages = [
+                ChatMessage(
+                    role=MessageRole.SYSTEM if msg["role"] == "system" else MessageRole.USER,
+                    content=msg["content"],
+                )
+                for msg in messages_data
+            ]
+
+            try:
+                response = client.chat(messages, max_tokens=8192)
+                fixed_code = CodeFixPrompt.parse_response(response)
+
+                if fixed_code:
+                    new_validation = CodeValidator.validate(fixed_code)
+                    if new_validation.valid:
+                        return fixed_code, True
+
+                    error_messages = [str(issue) for issue in new_validation.errors]
+                    code = fixed_code
+
+            except Exception:
+                continue
+
+        return code, False
+
+    @staticmethod
     def _generate_simple(
         test_cases: list[TestCase],
         request: ScriptGenerateRequest,
     ) -> GenerateResult:
         saved_scripts: list[TestScript] = []
+        final_validation_result: Optional[ValidationResult] = None
 
         for tc in test_cases:
             prompt_tc = PromptTestCase(
@@ -180,6 +254,12 @@ class TestScriptService:
                 base_url=request.base_url,
             )
 
+            if request.enable_validation:
+                validation_result = CodeValidator.validate_and_fix(code)
+                final_validation_result = validation_result
+                if validation_result.fixed_code:
+                    code = validation_result.fixed_code
+
             test_script = TestScript(
                 name=f"{tc.name}_script",
                 content=code,
@@ -192,6 +272,7 @@ class TestScriptService:
             success=True,
             message=f"成功生成并保存 {len(saved_scripts)} 个测试脚本",
             scripts=saved_scripts,
+            validation_result=final_validation_result,
         )
 
     @staticmethod

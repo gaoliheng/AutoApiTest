@@ -494,3 +494,77 @@ def test_{test_function_name}():
             "low": "minor",
         }
         return mapping.get(priority, "normal")
+
+
+class CodeFixPrompt:
+    CODE_FIX_SYSTEM_PROMPT = """你是一个专业的Python代码修复专家。你的任务是修复有问题的Python测试代码。
+
+修复原则：
+1. 保持原有代码的功能和意图不变
+2. 只修复报告的错误，不要随意修改其他代码
+3. 确保修复后的代码可以正常运行
+4. 保持代码风格一致
+
+常见问题修复指南：
+- 语法错误：检查括号匹配、缩进、冒号等
+- 导入缺失：添加必要的import语句
+- 未定义变量：检查变量名拼写或添加定义
+- 类型错误：确保类型匹配
+- 断言错误：修正断言逻辑
+
+输出要求：
+- 直接输出修复后的完整Python代码
+- 用```python包裹代码
+- 不要添加任何解释说明"""
+
+    @classmethod
+    def build_messages(
+        cls,
+        original_code: str,
+        error_messages: list[str],
+    ) -> list[dict[str, str]]:
+        from .client import ChatMessage, MessageRole
+
+        error_text = "\n".join(f"- {err}" for err in error_messages)
+
+        user_message = f"""请修复以下Python测试代码中的错误。
+
+## 原始代码
+```python
+{original_code}
+```
+
+## 检测到的问题
+{error_text}
+
+请修复这些问题并输出完整的修正后的代码。"""
+
+        return [
+            {"role": "system", "content": cls.CODE_FIX_SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
+        ]
+
+    @classmethod
+    def parse_response(cls, response: dict[str, Any]) -> Optional[str]:
+        choices = response.get("choices", [])
+        if not choices:
+            return None
+
+        content = choices[0].get("message", {}).get("content", "")
+        content = content.strip()
+
+        if "```python" in content:
+            start = content.find("```python") + 9
+            end = content.find("```", start)
+            if end > start:
+                return content[start:end].strip()
+        elif "```" in content:
+            start = content.find("```") + 3
+            end = content.find("```", start)
+            if end > start:
+                return content[start:end].strip()
+
+        if content and ("import " in content or "def " in content):
+            return content
+
+        return None
