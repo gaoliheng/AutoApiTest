@@ -115,7 +115,7 @@ class TextEditDialog(QDialog):
 
 class GenerateThread(QThread):
     progress = pyqtSignal(str)
-    finished = pyqtSignal(list, str, str)
+    finished = pyqtSignal(list, str, str, str)
     error = pyqtSignal(str)
     
     def __init__(
@@ -151,6 +151,10 @@ class GenerateThread(QThread):
 {
     "base_url": "http://api.example.com:8080",
     "api_path": "/api/v1/users",
+    "common_headers": {
+        "Authorization": "Bearer your_token_here",
+        "Content-Type": "application/json"
+    },
     "test_cases": [
         {
             "name": "测试用例名称",
@@ -167,10 +171,17 @@ class GenerateThread(QThread):
 请确保：
 1. 从文档中提取 base_url（包含协议、IP、端口），如果没有找到则设为空字符串
 2. 从文档中提取 api_path（接口路径），如果没有找到则设为空字符串
-3. 为该接口生成多个测试场景（正常、异常、边界值等）
-4. params 和 body 使用自然语言或JSON格式描述
-5. assertions 使用自然语言描述断言条件
-6. 只输出JSON，不要包含其他说明文字"""
+3. 【重要】从文档中提取 common_headers（通用请求头），特别关注：
+   - Authorization：认证信息（如 Bearer token、API Key 等），这是用户最关注的
+   - Content-Type：内容类型
+   - 其他必要的请求头
+   如果文档中提到需要认证但未给出具体token，Authorization 值使用占位符如 "Bearer your_token_here"
+   如果文档中对请求头的描述是自然语言（如"需要在Header中传入token"），也可以提取为JSON格式
+   如果没有找到任何请求头，则设为空对象 {}
+4. 为该接口生成多个测试场景（正常、异常、边界值等）
+5. params 和 body 使用自然语言或JSON格式描述
+6. assertions 使用自然语言描述断言条件
+7. 只输出JSON，不要包含其他说明文字"""
             
             user_message = f"以下是API接口文档：\n\n{self._doc_content}\n\n请根据以上接口文档生成测试用例。"
             
@@ -185,17 +196,17 @@ class GenerateThread(QThread):
             
             content = response["choices"][0]["message"]["content"]
             
-            test_cases, base_url, api_path = self._parse_response(content)
+            test_cases, base_url, api_path, common_headers = self._parse_response(content)
             
             client.close()
             
             self.progress.emit("测试用例生成完成!")
-            self.finished.emit(test_cases, base_url, api_path)
+            self.finished.emit(test_cases, base_url, api_path, common_headers)
             
         except Exception as e:
             self.error.emit(f"生成失败: {str(e)}")
     
-    def _parse_response(self, content: str) -> tuple[list[dict], str, str]:
+    def _parse_response(self, content: str) -> tuple[list[dict], str, str, str]:
         json_str = content
         if "```json" in content:
             start = content.find("```json") + 7
@@ -209,22 +220,27 @@ class GenerateThread(QThread):
         data = json.loads(json_str)
         
         if isinstance(data, list):
-            return data, "", ""
+            return data, "", "", ""
         
         base_url = data.get("base_url", "")
         api_path = data.get("api_path", "")
+        common_headers_dict = data.get("common_headers", {})
         test_cases = data.get("test_cases", [])
         
         if not isinstance(test_cases, list):
             test_cases = [test_cases]
         
-        return test_cases, base_url, api_path
+        common_headers = ""
+        if isinstance(common_headers_dict, dict) and common_headers_dict:
+            common_headers = json.dumps(common_headers_dict, ensure_ascii=False, indent=2)
+        
+        return test_cases, base_url, api_path, common_headers
 
 
 _test_cases_store: list[TestCaseData] = []
 _base_url_store: str = ""
 _api_path_store: str = ""
-_common_headers_store: dict = {}
+_common_headers_store: str = ""
 _selected_indices_store: list[int] = []
 _api_doc_store: str = ""
 
@@ -256,11 +272,11 @@ def set_api_path(path: str) -> None:
     _api_path_store = path
 
 
-def get_common_headers() -> dict:
+def get_common_headers() -> str:
     return _common_headers_store
 
 
-def set_common_headers(headers: dict) -> None:
+def set_common_headers(headers: str) -> None:
     global _common_headers_store
     _common_headers_store = headers
 
@@ -315,6 +331,7 @@ class TestCasePage(BasePage):
         self._base_url_edit = QLineEdit()
         self._base_url_edit.setPlaceholderText("例如: http://192.168.1.100:8080")
         style_manager.apply_style(self._base_url_edit, "input")
+        self._base_url_edit.textChanged.connect(self._save_config)
         row1.addWidget(base_url_label)
         row1.addWidget(self._base_url_edit)
         config_layout.addLayout(row1)
@@ -325,6 +342,7 @@ class TestCasePage(BasePage):
         self._api_path_edit = QLineEdit()
         self._api_path_edit.setPlaceholderText("例如: /api/v1/users")
         style_manager.apply_style(self._api_path_edit, "input")
+        self._api_path_edit.textChanged.connect(self._save_config)
         row2.addWidget(api_path_label)
         row2.addWidget(self._api_path_edit)
         config_layout.addLayout(row2)
@@ -333,7 +351,7 @@ class TestCasePage(BasePage):
         headers_label = QLabel("请求头:")
         headers_label.setFixedWidth(70)
         self._headers_edit = QLineEdit()
-        self._headers_edit.setPlaceholderText('例如: {"Authorization": "Bearer token123"}')
+        self._headers_edit.setPlaceholderText('例如: {"Authorization": "Bearer token123"} 或 需要在Header中传入token进行认证')
         style_manager.apply_style(self._headers_edit, "input")
         self._headers_edit.textChanged.connect(self._save_config)
         row3.addWidget(headers_label)
@@ -570,15 +588,7 @@ class TestCasePage(BasePage):
     def _save_config(self) -> None:
         set_base_url(self._base_url_edit.text().strip())
         set_api_path(self._api_path_edit.text().strip())
-        try:
-            headers_text = self._headers_edit.text().strip()
-            if headers_text:
-                headers = json.loads(headers_text)
-                set_common_headers(headers)
-            else:
-                set_common_headers({})
-        except json.JSONDecodeError:
-            pass
+        set_common_headers(self._headers_edit.text().strip())
     
     def _generate_test_cases(self) -> None:
         doc_content = self._doc_input.toPlainText().strip()
@@ -617,17 +627,19 @@ class TestCasePage(BasePage):
         self._status_label.setText(message)
         _logger.debug(f"生成进度: {message}")
     
-    def _on_finished(self, test_cases: list[dict], base_url: str, api_path: str) -> None:
+    def _on_finished(self, test_cases: list[dict], base_url: str, api_path: str, common_headers: str) -> None:
         self._generate_btn.setEnabled(True)
         self._progress_bar.setVisible(False)
         self._status_label.setText(f"成功生成 {len(test_cases)} 个测试用例")
         
-        _logger.info(f"测试用例生成完成: count={len(test_cases)}, base_url={base_url}, api_path={api_path}")
+        _logger.info(f"测试用例生成完成: count={len(test_cases)}, base_url={base_url}, api_path={api_path}, headers={common_headers}")
         
         if base_url:
             self._base_url_edit.setText(base_url)
         if api_path:
             self._api_path_edit.setText(api_path)
+        if common_headers:
+            self._headers_edit.setText(common_headers)
         
         self._load_cases_to_table(test_cases)
         self._save_config()

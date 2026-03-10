@@ -95,7 +95,7 @@ class ScriptGenerateThread(QThread):
         test_cases: list,
         base_url: str,
         api_path: str,
-        common_headers: dict,
+        common_headers: str,
         api_doc: str,
         parent: Optional[QWidget] = None
     ) -> None:
@@ -175,7 +175,7 @@ import json"""
                 })
             
             cases_json = json.dumps(cases_data, ensure_ascii=False, indent=2)
-            headers_json = json.dumps(self._common_headers, ensure_ascii=False, indent=2)
+            headers_text = self._common_headers if self._common_headers else "无"
             
             user_message = f"""以下是接口文档和测试配置：
 
@@ -186,7 +186,7 @@ import json"""
 - BASE_URL: {self._base_url}
 - API_PATH: {self._api_path}
 - 完整URL: {self._base_url}{self._api_path}
-- 公共请求头: {headers_json}
+- 公共请求头: {headers_text}
 
 ## 测试用例
 {cases_json}
@@ -368,6 +368,8 @@ class TestScriptPage(BasePage):
             QMessageBox.warning(self, "提示", "请先在「测试用例」页面输入接口文档")
             return
         
+        common_headers = get_common_headers()
+        
         model_id = self._model_combo.currentData()
         if not model_id:
             QMessageBox.warning(self, "提示", "请选择 AI 模型")
@@ -383,8 +385,6 @@ class TestScriptPage(BasePage):
         self._generate_btn.setEnabled(False)
         self._progress_bar.setVisible(True)
         self._status_label.setText("正在生成测试脚本...")
-        
-        common_headers = get_common_headers()
         
         self._generate_thread = ScriptGenerateThread(
             ai_model=ai_model,
