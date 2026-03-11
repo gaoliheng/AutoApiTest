@@ -324,43 +324,71 @@ class TestCasePage(BasePage):
         config_group = QGroupBox("接口配置")
         config_group.setStyleSheet("""
             QGroupBox {
-                font-weight: bold;
-                font-size: 13px;
-                margin-top: 6px;
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 12px;
                 padding-top: 8px;
+                font-size: 14px;
+                font-weight: bold;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px;
+                subcontrol-position: top left;
+                padding: 0 10px;
+                color: #1976d2;
             }
         """)
         config_layout = QHBoxLayout(config_group)
-        config_layout.setSpacing(15)
-        config_layout.setContentsMargins(15, 10, 15, 10)
+        config_layout.setSpacing(20)
+        config_layout.setContentsMargins(20, 15, 20, 15)
 
-        base_url_label = QLabel("Base URL:")
-        base_url_label.setStyleSheet("font-weight: normal;")
+        base_url_label = QLabel("Base URL")
+        base_url_label.setStyleSheet("font-weight: 600; color: #424242; font-size: 13px;")
         config_layout.addWidget(base_url_label)
         self._base_url_edit = QLineEdit()
         self._base_url_edit.setPlaceholderText("http://192.168.1.100:8080")
-        self._base_url_edit.setMinimumWidth(200)
-        style_manager.apply_style(self._base_url_edit, "input")
+        self._base_url_edit.setMinimumWidth(220)
+        self._base_url_edit.setStyleSheet("""
+            QLineEdit {
+                background-color: #fafafa;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border-color: #2196f3;
+                background-color: #ffffff;
+            }
+        """)
         self._base_url_edit.textChanged.connect(self._save_config)
         config_layout.addWidget(self._base_url_edit)
 
-        api_path_label = QLabel("接口路径:")
-        api_path_label.setStyleSheet("font-weight: normal;")
+        api_path_label = QLabel("接口路径")
+        api_path_label.setStyleSheet("font-weight: 600; color: #424242; font-size: 13px;")
         config_layout.addWidget(api_path_label)
         self._api_path_edit = QLineEdit()
         self._api_path_edit.setPlaceholderText("/api/v1/users")
-        self._api_path_edit.setMinimumWidth(150)
-        style_manager.apply_style(self._api_path_edit, "input")
+        self._api_path_edit.setMinimumWidth(180)
+        self._api_path_edit.setStyleSheet("""
+            QLineEdit {
+                background-color: #fafafa;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border-color: #2196f3;
+                background-color: #ffffff;
+            }
+        """)
         self._api_path_edit.textChanged.connect(self._save_config)
         config_layout.addWidget(self._api_path_edit)
 
-        headers_label = QLabel("请求头:")
-        headers_label.setStyleSheet("font-weight: normal;")
+        headers_label = QLabel("请求头")
+        headers_label.setStyleSheet("font-weight: 600; color: #424242; font-size: 13px;")
         config_layout.addWidget(headers_label)
         self._headers_edit = QLineEdit()
         self._headers_edit.setPlaceholderText('{"Authorization": "Bearer token"}')
@@ -372,55 +400,107 @@ class TestCasePage(BasePage):
         self._headers_btn = QPushButton("点击编辑")
         self._headers_btn.setMinimumWidth(100)
         self._headers_btn.clicked.connect(self._show_headers_dialog)
-        style_manager.apply_style(self._headers_btn, "button_secondary")
+        self._headers_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f5f5f5;
+                color: #424242;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e3f2fd;
+                border-color: #90caf9;
+            }
+        """)
         config_layout.addWidget(self._headers_btn)
 
         self._headers_status_label = QLabel("")
-        self._headers_status_label.setStyleSheet("font-weight: normal; color: #999; font-size: 12px;")
+        self._headers_status_label.setStyleSheet("font-weight: normal; color: #4caf50; font-size: 12px; min-width: 80px;")
         config_layout.addWidget(self._headers_status_label)
 
         config_layout.addStretch()
-        style_manager.apply_style(config_group, "group_box")
         self.add_widget(config_group)
 
         second_bar = QHBoxLayout()
-        second_bar.setSpacing(10)
+        second_bar.setSpacing(15)
 
         doc_group = QGroupBox("接口文档")
         doc_group.setStyleSheet("""
             QGroupBox {
-                font-weight: bold;
-                font-size: 13px;
-                margin-top: 6px;
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 12px;
                 padding-top: 8px;
+                font-size: 14px;
+                font-weight: bold;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px;
+                subcontrol-position: top left;
+                padding: 0 10px;
+                color: #388e3c;
             }
         """)
         doc_layout = QHBoxLayout(doc_group)
-        doc_layout.setSpacing(8)
-        doc_layout.setContentsMargins(10, 5, 10, 5)
+        doc_layout.setSpacing(10)
+        doc_layout.setContentsMargins(15, 12, 15, 12)
 
         self._doc_status_label = QLabel("未填写")
-        self._doc_status_label.setStyleSheet("font-weight: normal; color: #999; font-size: 12px;")
+        self._doc_status_label.setStyleSheet("font-weight: normal; color: #9e9e9e; font-size: 13px; min-width: 100px;")
         doc_layout.addWidget(self._doc_status_label)
 
         self._edit_doc_btn = QPushButton("编辑文档")
         self._edit_doc_btn.clicked.connect(self._show_doc_dialog)
-        style_manager.apply_style(self._edit_doc_btn, "button_secondary")
+        self._edit_doc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e8f5e9;
+                color: #388e3c;
+                border: 1px solid #a5d6a7;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+            }
+        """)
         doc_layout.addWidget(self._edit_doc_btn)
 
         self._upload_btn = QPushButton("上传文件")
         self._upload_btn.clicked.connect(self._upload_file)
-        style_manager.apply_style(self._upload_btn, "button_secondary")
+        self._upload_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f5f5f5;
+                color: #424242;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #eeeeee;
+            }
+        """)
         doc_layout.addWidget(self._upload_btn)
 
         self._clear_doc_btn = QPushButton("清空")
         self._clear_doc_btn.clicked.connect(self._clear_doc)
-        style_manager.apply_style(self._clear_doc_btn, "button_secondary")
+        self._clear_doc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #fff3e0;
+                color: #e65100;
+                border: 1px solid #ffcc80;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #ffe0b2;
+            }
+        """)
         doc_layout.addWidget(self._clear_doc_btn)
 
         doc_layout.addStretch()
@@ -429,33 +509,74 @@ class TestCasePage(BasePage):
         ai_group = QGroupBox("AI生成")
         ai_group.setStyleSheet("""
             QGroupBox {
-                font-weight: bold;
-                font-size: 13px;
-                margin-top: 6px;
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 12px;
                 padding-top: 8px;
+                font-size: 14px;
+                font-weight: bold;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px;
+                subcontrol-position: top left;
+                padding: 0 10px;
+                color: #7b1fa2;
             }
         """)
         ai_layout = QHBoxLayout(ai_group)
-        ai_layout.setSpacing(8)
-        ai_layout.setContentsMargins(10, 5, 10, 5)
+        ai_layout.setSpacing(10)
+        ai_layout.setContentsMargins(15, 12, 15, 12)
 
-        model_label = QLabel("模型:")
-        model_label.setStyleSheet("font-weight: normal;")
+        model_label = QLabel("模型")
+        model_label.setStyleSheet("font-weight: 600; color: #424242; font-size: 13px;")
         ai_layout.addWidget(model_label)
 
         self._model_combo = QComboBox()
-        self._model_combo.setMinimumWidth(150)
-        style_manager.apply_style(self._model_combo, "combobox")
+        self._model_combo.setMinimumWidth(180)
+        self._model_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #fafafa;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+            QComboBox:hover {
+                border-color: #bdbdbd;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 30px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                selection-background-color: #f3e5f5;
+            }
+        """)
         ai_layout.addWidget(self._model_combo)
 
         self._generate_btn = QPushButton("生成测试用例")
         self._generate_btn.clicked.connect(self._generate_test_cases)
-        style_manager.apply_style(self._generate_btn, "button_primary")
+        self._generate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #7b1fa2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 24px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #9c27b0;
+            }
+            QPushButton:pressed {
+                background-color: #6a1b9a;
+            }
+        """)
         ai_layout.addWidget(self._generate_btn)
 
         ai_layout.addStretch()
@@ -464,54 +585,155 @@ class TestCasePage(BasePage):
         self.add_layout(second_bar)
 
         progress_layout = QHBoxLayout()
+        progress_layout.setContentsMargins(0, 5, 0, 5)
         self._progress_bar = QProgressBar()
         self._progress_bar.setRange(0, 0)
         self._progress_bar.setVisible(False)
-        self._progress_bar.setFixedHeight(18)
-        style_manager.apply_style(self._progress_bar, "progress_bar")
+        self._progress_bar.setFixedHeight(20)
+        self._progress_bar.setStyleSheet("""
+            QProgressBar {
+                background-color: #f3e5f5;
+                border: none;
+                border-radius: 10px;
+                text-align: center;
+                font-size: 12px;
+                color: #7b1fa2;
+            }
+            QProgressBar::chunk {
+                background-color: #9c27b0;
+                border-radius: 10px;
+            }
+        """)
         progress_layout.addWidget(self._progress_bar)
 
         self._status_label = QLabel("")
-        self._status_label.setStyleSheet("color: #757575;")
+        self._status_label.setStyleSheet("color: #757575; font-size: 13px; margin-left: 10px;")
         progress_layout.addWidget(self._status_label)
         progress_layout.addStretch()
         self.add_layout(progress_layout)
 
         table_group = QGroupBox("测试用例列表")
+        table_group.setStyleSheet("""
+            QGroupBox {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 8px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 10px;
+                color: #1565c0;
+            }
+        """)
         table_layout = QVBoxLayout(table_group)
-        table_layout.setSpacing(8)
+        table_layout.setSpacing(10)
+        table_layout.setContentsMargins(15, 15, 15, 15)
 
         table_btn_layout = QHBoxLayout()
-        table_btn_layout.setSpacing(8)
+        table_btn_layout.setSpacing(10)
 
         self._select_all_cb = QCheckBox("全选")
         self._select_all_cb.stateChanged.connect(self._on_select_all)
+        self._select_all_cb.setStyleSheet("""
+            QCheckBox {
+                spacing: 8px;
+                font-size: 13px;
+                color: #424242;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 4px;
+                border: 2px solid #bdbdbd;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #2196f3;
+                border-color: #2196f3;
+            }
+        """)
         table_btn_layout.addWidget(self._select_all_cb)
 
         self._add_row_btn = QPushButton("添加行")
         self._add_row_btn.clicked.connect(self._add_row)
-        style_manager.apply_style(self._add_row_btn, "button_secondary")
+        self._add_row_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e3f2fd;
+                color: #1565c0;
+                border: 1px solid #90caf9;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+            }
+        """)
         table_btn_layout.addWidget(self._add_row_btn)
 
         self._delete_row_btn = QPushButton("删除勾选")
         self._delete_row_btn.clicked.connect(self._delete_selected_rows)
-        style_manager.apply_style(self._delete_row_btn, "button_secondary")
+        self._delete_row_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #ffebee;
+                color: #c62828;
+                border: 1px solid #ef9a9a;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #ffcdd2;
+            }
+        """)
         table_btn_layout.addWidget(self._delete_row_btn)
 
         self._clear_table_btn = QPushButton("清空表格")
         self._clear_table_btn.clicked.connect(self._clear_table)
-        style_manager.apply_style(self._clear_table_btn, "button_secondary")
+        self._clear_table_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #fff3e0;
+                color: #e65100;
+                border: 1px solid #ffcc80;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #ffe0b2;
+            }
+        """)
         table_btn_layout.addWidget(self._clear_table_btn)
 
         table_btn_layout.addStretch()
 
         self._count_label = QLabel("共 0 条")
-        self._count_label.setStyleSheet("color: #666; font-size: 13px;")
+        self._count_label.setStyleSheet("color: #757575; font-size: 13px; font-weight: 500;")
         table_btn_layout.addWidget(self._count_label)
 
         self._generate_script_btn = QPushButton("去生成脚本")
         self._generate_script_btn.clicked.connect(self._go_to_script_page)
-        style_manager.apply_style(self._generate_script_btn, "button_primary")
+        self._generate_script_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1565c0;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 24px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1976d2;
+            }
+            QPushButton:pressed {
+                background-color: #0d47a1;
+            }
+        """)
         table_btn_layout.addWidget(self._generate_script_btn)
 
         table_layout.addLayout(table_btn_layout)
@@ -526,46 +748,52 @@ class TestCasePage(BasePage):
         self._table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Interactive)
         self._table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
         self._table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
-        self._table.setColumnWidth(0, 50)
-        self._table.setColumnWidth(1, 180)
+        self._table.setColumnWidth(0, 60)
+        self._table.setColumnWidth(1, 200)
         self._table.setColumnWidth(2, 80)
         self._table.setColumnWidth(3, 200)
         self._table.setColumnWidth(4, 200)
-        self._table.setColumnWidth(5, 100)
+        self._table.setColumnWidth(5, 180)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setAlternatingRowColors(True)
-        self._table.verticalHeader().setDefaultSectionSize(36)
+        self._table.verticalHeader().setDefaultSectionSize(40)
         self._table.verticalHeader().setVisible(False)
         self._table.horizontalHeader().setMinimumSectionSize(50)
         self._table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         self._table.setStyleSheet("""
             QTableWidget {
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                background-color: #fff;
-                gridline-color: #eee;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                background-color: #ffffff;
+                gridline-color: #f5f5f5;
                 font-size: 13px;
             }
             QTableWidget::item {
-                padding: 6px;
-                border-bottom: 1px solid #eee;
+                padding: 8px 12px;
+                border-bottom: 1px solid #f5f5f5;
             }
             QTableWidget::item:selected {
                 background-color: #e3f2fd;
-                color: #333;
+                color: #1565c0;
+            }
+            QTableWidget::item:hover {
+                background-color: #f5f5f5;
             }
             QHeaderView::section {
-                background-color: #f5f5f5;
-                padding: 8px;
+                background-color: #fafafa;
+                padding: 12px 8px;
                 border: none;
-                border-bottom: 2px solid #ddd;
-                font-weight: bold;
+                border-bottom: 2px solid #e0e0e0;
+                font-weight: 600;
                 font-size: 13px;
+                color: #424242;
+            }
+            QHeaderView::section:hover {
+                background-color: #f5f5f5;
             }
         """)
         table_layout.addWidget(self._table, 1)
 
-        style_manager.apply_style(table_group, "group_box")
         self.add_widget(table_group, 1)
 
         self._doc_input = QTextEdit()
@@ -822,7 +1050,24 @@ class TestCasePage(BasePage):
             assertions = case_data.get("assertions", "")
             
             checkbox = QCheckBox()
-            checkbox.setStyleSheet("QCheckBox { margin-left: 15px; }")
+            checkbox.setStyleSheet("""
+                QCheckBox {
+                    spacing: 0px;
+                }
+                QCheckBox::indicator {
+                    width: 16px;
+                    height: 16px;
+                    border-radius: 3px;
+                    border: 2px solid #bdbdbd;
+                }
+                QCheckBox::indicator:checked {
+                    background-color: #2196f3;
+                    border-color: #2196f3;
+                }
+                QCheckBox::indicator:hover {
+                    border-color: #2196f3;
+                }
+            """)
             self._table.setCellWidget(row, 0, checkbox)
             
             self._table.setItem(row, 1, QTableWidgetItem(name))
@@ -835,6 +1080,29 @@ class TestCasePage(BasePage):
                 status_combo.addItem(desc, code)
             status_combo.setCurrentText(HTTP_STATUS_CODES.get(str(expected_status), str(expected_status)))
             status_combo.currentIndexChanged.connect(lambda _, r=row: self._on_status_changed(r))
+            status_combo.setStyleSheet("""
+                QComboBox {
+                    background-color: #fafafa;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 12px;
+                    min-width: 140px;
+                }
+                QComboBox:hover {
+                    border-color: #bdbdbd;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                    width: 20px;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: #ffffff;
+                    border: 1px solid #e0e0e0;
+                    selection-background-color: #e3f2fd;
+                    min-width: 200px;
+                }
+            """)
             self._table.setCellWidget(row, 5, status_combo)
             
             self._table.setItem(row, 6, QTableWidgetItem(str(assertions) if assertions else ""))
@@ -851,7 +1119,24 @@ class TestCasePage(BasePage):
         self._table.insertRow(row)
         
         checkbox = QCheckBox()
-        checkbox.setStyleSheet("QCheckBox { margin-left: 15px; }")
+        checkbox.setStyleSheet("""
+            QCheckBox {
+                spacing: 0px;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border-radius: 3px;
+                border: 2px solid #bdbdbd;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #2196f3;
+                border-color: #2196f3;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #2196f3;
+            }
+        """)
         self._table.setCellWidget(row, 0, checkbox)
         
         self._table.setItem(row, 1, QTableWidgetItem(""))
@@ -864,6 +1149,29 @@ class TestCasePage(BasePage):
             status_combo.addItem(desc, code)
         status_combo.setCurrentIndex(0)
         status_combo.currentIndexChanged.connect(lambda _, r=row: self._on_status_changed(r))
+        status_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #fafafa;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 12px;
+                min-width: 140px;
+            }
+            QComboBox:hover {
+                border-color: #bdbdbd;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                selection-background-color: #e3f2fd;
+                min-width: 200px;
+            }
+        """)
         self._table.setCellWidget(row, 5, status_combo)
         
         self._table.setItem(row, 6, QTableWidgetItem(""))
