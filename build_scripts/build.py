@@ -75,14 +75,16 @@ def print_build_result(project_root: Path) -> None:
 
 
 def main() -> int:
-    project_root = Path(__file__).parent.resolve()
+    build_scripts_dir = Path(__file__).parent.resolve()
+    project_root = build_scripts_dir.parent.resolve()
     
     print("=" * 50)
     print("AutoApiTest 打包脚本")
     print("=" * 50)
     print(f"项目目录: {project_root}")
+    print(f"脚本目录: {build_scripts_dir}")
     
-    os.chdir(project_root)
+    os.chdir(build_scripts_dir)
     
     clean_build_files(project_root)
     
@@ -90,7 +92,7 @@ def main() -> int:
         print("错误: 依赖安装失败")
         return 1
     
-    if not build_executable(project_root):
+    if not build_executable(build_scripts_dir):
         print("错误: 打包失败")
         return 1
     
