@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Optional
 import yaml
+import sys
+import os
 
 
 class Config:
@@ -17,7 +19,12 @@ class Config:
             return
         
         self._initialized = True
-        self._base_path: Path = Path(__file__).parent.parent.parent
+        
+        if getattr(sys, 'frozen', False):
+            self._base_path: Path = Path(sys.executable).parent
+        else:
+            self._base_path: Path = Path(__file__).parent.parent.parent
+        
         self._data_path: Path = self._base_path / "data"
         self._exports_path: Path = self._base_path / "exports"
         self._config_path: Path = self._data_path / "config.yaml"
