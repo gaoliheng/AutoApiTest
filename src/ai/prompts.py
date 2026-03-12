@@ -4,9 +4,14 @@ AI Prompt 模板模块
 """
 
 import json
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
+
+from utils.logger import get_logger
+
+_logger = get_logger("ai.prompts")
 
 
 class DocumentFormat(Enum):
@@ -161,26 +166,35 @@ class TestCasePrompt:
             },
         ]
 
+    REQUIRED_FIELDS = ["id", "name", "endpoint", "method"]
+    OPTIONAL_FIELDS = ["description", "headers", "path_params", "query_params", 
+                       "request_body", "expected_status", "expected_response", 
+                       "assertions", "priority", "tags"]
+
     @classmethod
     def parse_response(cls, response: dict[str, Any]) -> list[TestCase]:
         choices = response.get("choices", [])
         if not choices:
+            _logger.warning("AI响应中没有choices")
             return []
 
         content = choices[0].get("message", {}).get("content", "")
         content = content.strip()
 
-        if content.startswith("```json"):
-            content = content[7:]
-        if content.startswith("```"):
-            content = content[3:]
-        if content.endswith("```"):
-            content = content[:-3]
-        content = content.strip()
+        if not content:
+            _logger.warning("AI响应内容为空")
+            return []
 
-        try:
-            test_cases_data = json.loads(content)
-        except json.JSONDecodeError:
+        content = cls._clean_json_content(content)
+        
+        test_cases_data = cls._try_parse_json(content)
+        
+        if test_cases_data is None:
+            _logger.warning("JSON解析失败，尝试正则提取...")
+            test_cases_data = cls._extract_by_regex(content)
+        
+        if not test_cases_data:
+            _logger.error(f"无法提取测试用例，内容前500字符: {content[:500]}")
             return []
 
         if not isinstance(test_cases_data, list):
@@ -188,6 +202,9 @@ class TestCasePrompt:
 
         test_cases = []
         for tc_data in test_cases_data:
+            if not cls._validate_test_case_data(tc_data):
+                _logger.warning(f"测试用例数据不完整: {tc_data.get('id', 'unknown')}")
+                continue
             try:
                 test_case = TestCase(
                     id=tc_data.get("id", ""),
@@ -206,10 +223,141 @@ class TestCasePrompt:
                     tags=tc_data.get("tags", []),
                 )
                 test_cases.append(test_case)
-            except Exception:
+            except Exception as e:
+                _logger.warning(f"解析测试用例失败: {e}")
                 continue
 
+        _logger.info(f"成功解析 {len(test_cases)} 个测试用例")
         return test_cases
+
+    @classmethod
+    def _validate_test_case_data(cls, data: dict) -> bool:
+        if not isinstance(data, dict):
+            return False
+        for field in cls.REQUIRED_FIELDS:
+            if field not in data or data[field] is None or data[field] == "":
+                _logger.debug(f"缺少必需字段: {field}")
+                return False
+        return True
+
+    @classmethod
+    def _extract_by_regex(cls, content: str) -> list[dict]:
+        test_cases = []
+        
+        tc_blocks = re.split(r'\}\s*,\s*\{', content)
+        
+        for i, block in enumerate(tc_blocks):
+            tc_data = {}
+            
+            id_match = re.search(r'"id"\s*:\s*"([^"]*)"', block)
+            if id_match:
+                tc_data["id"] = id_match.group(1)
+            
+            name_match = re.search(r'"name"\s*:\s*"([^"]*)"', block)
+            if name_match:
+                tc_data["name"] = name_match.group(1)
+            
+            endpoint_match = re.search(r'"endpoint"\s*:\s*"([^"]*)"', block)
+            if endpoint_match:
+                tc_data["endpoint"] = endpoint_match.group(1)
+            
+            method_match = re.search(r'"method"\s*:\s*"(\w+)"', block)
+            if method_match:
+                tc_data["method"] = method_match.group(1)
+            
+            desc_match = re.search(r'"description"\s*:\s*"([^"]*)"', block)
+            if desc_match:
+                tc_data["description"] = desc_match.group(1)
+            
+            status_match = re.search(r'"expected_status"\s*:\s*(\d+)', block)
+            if status_match:
+                tc_data["expected_status"] = int(status_match.group(1))
+            
+            priority_match = re.search(r'"priority"\s*:\s*"(\w+)"', block)
+            if priority_match:
+                tc_data["priority"] = priority_match.group(1)
+            
+            headers_match = re.search(r'"headers"\s*:\s*(\{[^}]*\})', block)
+            if headers_match:
+                try:
+                    tc_data["headers"] = json.loads(headers_match.group(1))
+                except:
+                    tc_data["headers"] = {}
+            
+            query_params_match = re.search(r'"query_params"\s*:\s*(\{[^}]*\})', block)
+            if query_params_match:
+                try:
+                    tc_data["query_params"] = json.loads(query_params_match.group(1))
+                except:
+                    tc_data["query_params"] = {}
+            
+            request_body_match = re.search(r'"request_body"\s*:\s*(\{[\s\S]*?\})\s*,\s*"', block)
+            if request_body_match:
+                try:
+                    tc_data["request_body"] = json.loads(request_body_match.group(1))
+                except:
+                    pass
+            
+            if tc_data.get("id") and tc_data.get("name"):
+                test_cases.append(tc_data)
+        
+        return test_cases
+
+    @classmethod
+    def _clean_json_content(cls, content: str) -> str:
+        content = content.strip()
+        
+        if content.startswith("```json"):
+            content = content[7:]
+        elif content.startswith("```"):
+            content = content[3:]
+        
+        if content.endswith("```"):
+            content = content[:-3]
+        
+        content = content.strip()
+        
+        json_match = re.search(r'\[[\s\S]*\]', content)
+        if json_match:
+            content = json_match.group(0)
+        else:
+            json_match = re.search(r'\{[\s\S]*\}', content)
+            if json_match:
+                content = "[" + json_match.group(0) + "]"
+        
+        return content
+
+    @classmethod
+    def _try_parse_json(cls, content: str) -> Any:
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError as e:
+            _logger.debug(f"直接JSON解析失败: {e}")
+        
+        fixed_content = cls._fix_json(content)
+        try:
+            return json.loads(fixed_content)
+        except json.JSONDecodeError as e:
+            _logger.debug(f"修复后JSON解析失败: {e}")
+        
+        return None
+
+    @classmethod
+    def _fix_json(cls, content: str) -> str:
+        content = re.sub(r',\s*]', ']', content)
+        content = re.sub(r',\s*}', '}', content)
+        
+        content = re.sub(r'(?<!\\)"(?![\s:,\]\}])', '\\"', content)
+        
+        open_braces = content.count('{') - content.count('}')
+        open_brackets = content.count('[') - content.count(']')
+        
+        if open_brackets > 0:
+            content += ']' * open_brackets
+        if open_braces > 0:
+            content += '}' * open_braces
+        
+        return content
 
 
 class TestScriptPrompt:
@@ -349,24 +497,22 @@ def test_{test_function_name}():
     def parse_response(cls, response: dict[str, Any]) -> list[TestScript]:
         choices = response.get("choices", [])
         if not choices:
+            _logger.warning("AI响应中没有choices")
             return []
 
         content = choices[0].get("message", {}).get("content", "")
         content = content.strip()
 
-        if content.startswith("```json"):
-            content = content[7:]
-        if content.startswith("```python"):
-            content = content[9:]
-        if content.startswith("```"):
-            content = content[3:]
-        if content.endswith("```"):
-            content = content[:-3]
-        content = content.strip()
+        if not content:
+            _logger.warning("AI响应内容为空")
+            return []
 
-        try:
-            scripts_data = json.loads(content)
-        except json.JSONDecodeError:
+        content = cls._clean_json_content(content)
+        
+        scripts_data = cls._try_parse_json(content)
+        
+        if scripts_data is None:
+            _logger.error(f"JSON解析失败，内容前500字符: {content[:500]}")
             return []
 
         if not isinstance(scripts_data, list):
@@ -386,10 +532,70 @@ def test_{test_function_name}():
                     allure_severity=script_data.get("allure_severity", "normal"),
                 )
                 test_scripts.append(test_script)
-            except Exception:
+            except Exception as e:
+                _logger.warning(f"解析测试脚本失败: {e}")
                 continue
 
+        _logger.info(f"成功解析 {len(test_scripts)} 个测试脚本")
         return test_scripts
+
+    @classmethod
+    def _clean_json_content(cls, content: str) -> str:
+        content = content.strip()
+        
+        if content.startswith("```json"):
+            content = content[7:]
+        elif content.startswith("```python"):
+            content = content[9:]
+        elif content.startswith("```"):
+            content = content[3:]
+        
+        if content.endswith("```"):
+            content = content[:-3]
+        
+        content = content.strip()
+        
+        json_match = re.search(r'\[[\s\S]*\]', content)
+        if json_match:
+            content = json_match.group(0)
+        else:
+            json_match = re.search(r'\{[\s\S]*\}', content)
+            if json_match:
+                content = "[" + json_match.group(0) + "]"
+        
+        return content
+
+    @classmethod
+    def _try_parse_json(cls, content: str) -> Any:
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError as e:
+            _logger.debug(f"直接JSON解析失败: {e}")
+        
+        fixed_content = cls._fix_json(content)
+        try:
+            return json.loads(fixed_content)
+        except json.JSONDecodeError as e:
+            _logger.debug(f"修复后JSON解析失败: {e}")
+        
+        return None
+
+    @classmethod
+    def _fix_json(cls, content: str) -> str:
+        content = re.sub(r',\s*]', ']', content)
+        content = re.sub(r',\s*}', '}', content)
+        
+        content = re.sub(r'(?<!\\)"(?![\s:,\]\}])', '\\"', content)
+        
+        open_braces = content.count('{') - content.count('}')
+        open_brackets = content.count('[') - content.count(']')
+        
+        if open_brackets > 0:
+            content += ']' * open_brackets
+        if open_braces > 0:
+            content += '}' * open_braces
+        
+        return content
 
     @classmethod
     def generate_simple_script(
@@ -548,23 +754,34 @@ class CodeFixPrompt:
     def parse_response(cls, response: dict[str, Any]) -> Optional[str]:
         choices = response.get("choices", [])
         if not choices:
+            _logger.warning("AI响应中没有choices")
             return None
 
         content = choices[0].get("message", {}).get("content", "")
         content = content.strip()
 
+        if not content:
+            _logger.warning("AI响应内容为空")
+            return None
+
         if "```python" in content:
             start = content.find("```python") + 9
             end = content.find("```", start)
             if end > start:
-                return content[start:end].strip()
+                result = content[start:end].strip()
+                _logger.info(f"成功提取Python代码，长度: {len(result)}")
+                return result
         elif "```" in content:
             start = content.find("```") + 3
             end = content.find("```", start)
             if end > start:
-                return content[start:end].strip()
+                result = content[start:end].strip()
+                _logger.info(f"成功提取代码块，长度: {len(result)}")
+                return result
 
         if content and ("import " in content or "def " in content):
+            _logger.info(f"直接返回代码内容，长度: {len(content)}")
             return content
 
+        _logger.warning("无法从响应中提取有效代码")
         return None
