@@ -389,6 +389,7 @@ class SandboxExecutor:
         safe_globals = {
             "__builtins__": {
                 "__import__": __import__,
+                "__build_class__": __build_class__,
                 "Exception": Exception,
                 "True": True,
                 "False": False,
