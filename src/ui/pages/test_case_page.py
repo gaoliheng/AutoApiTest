@@ -1115,16 +1115,32 @@ class TestCasePage(BasePage):
                 self._save_to_store()
     
     def _go_to_script_page(self) -> None:
+        if self._table.rowCount() == 0:
+            QMessageBox.warning(self, "提示", "请先添加或生成测试用例")
+            return
+        
+        base_url = self._base_url_edit.text().strip()
+        if not base_url:
+            QMessageBox.warning(self, "提示", "请先配置 Base URL")
+            return
+        
+        api_path = self._api_path_edit.text().strip()
+        if not api_path:
+            QMessageBox.warning(self, "提示", "请先配置接口路径")
+            return
+        
         checked_rows = self._get_checked_rows()
         if checked_rows:
             set_selected_indices(checked_rows)
         else:
             set_selected_indices(list(range(self._table.rowCount())))
         
+        self._save_to_store()
+        
         from ui.main_window import MainWindow
         window = self.window()
         if isinstance(window, MainWindow):
-            window._nav_list.setCurrentRow(2)
+            window._nav_list.setCurrentRow(3)
     
     def _load_ai_models(self) -> None:
         self._model_combo.clear()

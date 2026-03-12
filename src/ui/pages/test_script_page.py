@@ -514,7 +514,7 @@ allure open allure-report
         from ui.main_window import MainWindow
         window = self.window()
         if isinstance(window, MainWindow):
-            window._nav_list.setCurrentRow(1)
+            window._nav_list.setCurrentRow(2)
     
     def _generate_script(self) -> None:
         all_test_cases = get_test_cases()
