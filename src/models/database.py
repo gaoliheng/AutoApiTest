@@ -93,6 +93,24 @@ class Database:
             """)
             
             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS auth_config (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    base_url TEXT NOT NULL,
+                    login_path TEXT NOT NULL,
+                    method TEXT NOT NULL DEFAULT 'POST',
+                    headers TEXT,
+                    body TEXT,
+                    token_path TEXT NOT NULL DEFAULT '$.data.access_token',
+                    token_prefix TEXT DEFAULT 'Bearer',
+                    header_name TEXT DEFAULT 'Authorization',
+                    is_enabled INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_ai_models_is_default 
                 ON ai_models(is_default)
             """)
