@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QComboBox,
     QApplication,
+    QScrollArea,
+    QSizePolicy,
 )
 
 from models.auth_config import AuthConfig
@@ -44,113 +46,154 @@ class AuthConfigDialog(QDialog):
     def _init_ui(self) -> None:
         title = "编辑登录配置" if self._is_edit_mode else "添加登录配置"
         self.setWindowTitle(title)
-        self.setMinimumWidth(600)
+        self.setMinimumWidth(750)
+        self.setMinimumHeight(650)
         self.setModal(True)
-        
-        layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(10)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        style_manager.apply_style(scroll_area, "scroll_area")
+
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setSpacing(15)
+
+        content_layout = QVBoxLayout()
+        content_layout.setSpacing(15)
+
         basic_group = QGroupBox("基本信息")
         basic_layout = QFormLayout(basic_group)
-        basic_layout.setSpacing(10)
-        
+        basic_layout.setSpacing(12)
+        basic_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+
         self._name_edit = QLineEdit()
         self._name_edit.setPlaceholderText("例如: 用户登录认证")
+        self._name_edit.setMinimumWidth(400)
         basic_layout.addRow("配置名称:", self._name_edit)
-        
+
         self._is_enabled_checkbox = QCheckBox("启用此配置")
         self._is_enabled_checkbox.setChecked(True)
         basic_layout.addRow("", self._is_enabled_checkbox)
-        
-        layout.addWidget(basic_group)
-        
+
+        content_layout.addWidget(basic_group)
+
         api_group = QGroupBox("登录接口配置")
         api_layout = QFormLayout(api_group)
-        api_layout.setSpacing(10)
-        
+        api_layout.setSpacing(12)
+        api_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+
         self._base_url_edit = QLineEdit()
         self._base_url_edit.setPlaceholderText("例如: http://192.168.1.100:8080")
+        self._base_url_edit.setMinimumWidth(400)
         api_layout.addRow("Base URL:", self._base_url_edit)
-        
+
         self._login_path_edit = QLineEdit()
         self._login_path_edit.setPlaceholderText("例如: /api/auth/login")
+        self._login_path_edit.setMinimumWidth(400)
         api_layout.addRow("登录路径:", self._login_path_edit)
-        
+
         self._method_combo = QComboBox()
         self._method_combo.addItems(["POST", "GET", "PUT", "PATCH"])
         self._method_combo.setCurrentText("POST")
+        self._method_combo.setMinimumWidth(150)
         api_layout.addRow("请求方法:", self._method_combo)
-        
-        layout.addWidget(api_group)
-        
+
+        content_layout.addWidget(api_group)
+
         request_group = QGroupBox("请求参数")
         request_layout = QVBoxLayout(request_group)
-        
+        request_layout.setSpacing(10)
+
         headers_label = QLabel("请求头 (JSON格式，可选):")
         request_layout.addWidget(headers_label)
-        
+
         self._headers_edit = QTextEdit()
         self._headers_edit.setPlaceholderText('{\n  "Content-Type": "application/json"\n}')
-        self._headers_edit.setMaximumHeight(80)
+        self._headers_edit.setMinimumHeight(80)
+        self._headers_edit.setMaximumHeight(120)
         request_layout.addWidget(self._headers_edit)
-        
+
         body_label = QLabel("请求体 (JSON格式):")
         request_layout.addWidget(body_label)
-        
+
         self._body_edit = QTextEdit()
         self._body_edit.setPlaceholderText('{\n  "username": "admin",\n  "password": "123456"\n}')
-        self._body_edit.setMaximumHeight(100)
+        self._body_edit.setMinimumHeight(100)
+        self._body_edit.setMaximumHeight(150)
         request_layout.addWidget(self._body_edit)
-        
-        layout.addWidget(request_group)
-        
+
+        content_layout.addWidget(request_group)
+
         token_group = QGroupBox("Token 提取配置")
         token_layout = QFormLayout(token_group)
-        token_layout.setSpacing(10)
-        
+        token_layout.setSpacing(12)
+        token_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+
         self._token_path_edit = QLineEdit()
         self._token_path_edit.setPlaceholderText("$.data.access_token")
         self._token_path_edit.setText("$.data.access_token")
+        self._token_path_edit.setMinimumWidth(400)
         token_layout.addRow("Token 路径:", self._token_path_edit)
-        
+
         self._token_prefix_edit = QLineEdit()
         self._token_prefix_edit.setPlaceholderText("Bearer")
         self._token_prefix_edit.setText("Bearer")
+        self._token_prefix_edit.setMinimumWidth(150)
         token_layout.addRow("Token 前缀:", self._token_prefix_edit)
-        
+
         self._header_name_edit = QLineEdit()
         self._header_name_edit.setPlaceholderText("Authorization")
         self._header_name_edit.setText("Authorization")
+        self._header_name_edit.setMinimumWidth(200)
         token_layout.addRow("Header 名称:", self._header_name_edit)
-        
-        layout.addWidget(token_group)
-        
+
+        content_layout.addWidget(token_group)
+
         test_group = QGroupBox("测试登录")
         test_layout = QVBoxLayout(test_group)
-        
+        test_layout.setSpacing(10)
+
         test_btn_layout = QHBoxLayout()
         self._test_btn = QPushButton("测试登录")
         self._test_btn.clicked.connect(self._test_login)
+        self._test_btn.setMinimumWidth(120)
         style_manager.apply_style(self._test_btn, "button_secondary")
         test_btn_layout.addWidget(self._test_btn)
         test_btn_layout.addStretch()
         test_layout.addLayout(test_btn_layout)
-        
+
         self._test_result_text = QTextEdit()
         self._test_result_text.setReadOnly(True)
-        self._test_result_text.setMaximumHeight(120)
+        self._test_result_text.setMinimumHeight(100)
+        self._test_result_text.setMaximumHeight(150)
         self._test_result_text.setPlaceholderText("点击测试登录按钮验证配置...")
         style_manager.apply_style(self._test_result_text, "input")
         test_layout.addWidget(self._test_result_text)
-        
-        layout.addWidget(test_group)
-        
+
+        content_layout.addWidget(test_group)
+
+        scroll_layout.addLayout(content_layout)
+        scroll_area.setWidget(scroll_content)
+
+        main_layout.addWidget(scroll_area)
+
         button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
+        button_box.setMinimumWidth(200)
         button_box.accepted.connect(self._on_accept)
         button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        button_layout.addWidget(button_box)
+        main_layout.addLayout(button_layout)
         
         style_manager.apply_style(self._name_edit, "input")
         style_manager.apply_style(self._base_url_edit, "input")
