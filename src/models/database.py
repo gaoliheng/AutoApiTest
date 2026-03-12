@@ -1,9 +1,13 @@
+import atexit
 import sqlite3
 from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
 
 from utils.config import config
+from utils.logger import get_logger
+
+_logger = get_logger("models.database")
 
 
 class Database:
@@ -107,7 +111,11 @@ class Database:
         if self._connection:
             self._connection.close()
             self._connection = None
-    
+            _logger.debug("数据库连接已关闭")
+
+    def __del__(self) -> None:
+        self.close()
+
     def execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
         with self.get_cursor() as cursor:
             cursor.execute(query, params)
@@ -125,3 +133,4 @@ class Database:
 
 
 db = Database()
+atexit.register(db.close)
