@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
 from models.test_case import TestCase
 from models.test_script import TestScript
@@ -21,6 +23,7 @@ from models.test_script import TestScript
 class ExportFormat(Enum):
     JSON = "json"
     YAML = "yaml"
+    EXCEL = "excel"
 
 
 @dataclass
@@ -64,6 +67,9 @@ class ExportService:
             if request.format == ExportFormat.JSON:
                 content = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
                 filename = ExportService._generate_filename("test_cases", "json")
+            elif request.format == ExportFormat.EXCEL:
+                content = ExportService._build_excel_content(test_cases)
+                filename = ExportService._generate_filename("test_cases", "xlsx")
             else:
                 content = yaml.dump(
                     data,
@@ -325,6 +331,67 @@ allure serve ./allure-results
 """.format(timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
         return content
+
+    @staticmethod
+    def _build_excel_content(test_cases: list[TestCase]) -> bytes:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "测试用例"
+
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
+        headers = ["ID", "用例名称", "接口路径", "请求方法", "请求头", "请求参数", "请求体", "预期状态码", "断言", "创建时间"]
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = header_alignment
+            cell.border = border
+
+        for row_num, tc in enumerate(test_cases, 2):
+            ws.cell(row=row_num, column=1, value=tc.id or "")
+            ws.cell(row=row_num, column=2, value=tc.name)
+            ws.cell(row=row_num, column=3, value=tc.api_path)
+            ws.cell(row=row_num, column=4, value=tc.method)
+            
+            headers_value = json.dumps(tc.headers, ensure_ascii=False) if tc.headers else ""
+            ws.cell(row=row_num, column=5, value=headers_value)
+            
+            params_value = json.dumps(tc.params, ensure_ascii=False) if tc.params else ""
+            ws.cell(row=row_num, column=6, value=params_value)
+            
+            body_value = json.dumps(tc.body, ensure_ascii=False) if tc.body else ""
+            ws.cell(row=row_num, column=7, value=body_value)
+            
+            ws.cell(row=row_num, column=8, value=tc.expected_status)
+            
+            assertions_value = json.dumps(tc.assertions, ensure_ascii=False) if tc.assertions else ""
+            ws.cell(row=row_num, column=9, value=assertions_value)
+            
+            created_at_value = tc.created_at.strftime("%Y-%m-%d %H:%M:%S") if tc.created_at else ""
+            ws.cell(row=row_num, column=10, value=created_at_value)
+
+            for col_num in range(1, 11):
+                cell = ws.cell(row=row_num, column=col_num)
+                cell.border = border
+                cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+        column_widths = [8, 25, 35, 12, 30, 30, 30, 12, 35, 20]
+        for col_num, width in enumerate(column_widths, 1):
+            ws.column_dimensions[chr(64 + col_num)].width = width
+
+        excel_buffer = io.BytesIO()
+        wb.save(excel_buffer)
+        excel_buffer.seek(0)
+        return excel_buffer.getvalue()
 
     @staticmethod
     def save_to_file(content: bytes, filepath: str) -> bool:

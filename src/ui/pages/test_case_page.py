@@ -33,6 +33,7 @@ from models.ai_model import AIModel
 from models.auth_config import AuthConfig
 from services.auth_service import AuthService
 from ai.client import AIClient, AIModelConfig, ChatMessage, MessageRole
+from core.export_service import ExportService, ExportFormat
 from ui.styles import style_manager
 from ui.pages.base_page import BasePage
 from utils.logger import get_logger
@@ -849,6 +850,23 @@ class TestCasePage(BasePage):
         """)
         table_btn_layout.addWidget(self._clear_table_btn)
 
+        self._export_btn = QPushButton("导出")
+        self._export_btn.clicked.connect(self._export_test_cases)
+        self._export_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e8f5e9;
+                color: #388e3c;
+                border: 1px solid #a5d6a7;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+            }
+        """)
+        table_btn_layout.addWidget(self._export_btn)
+
         table_btn_layout.addStretch()
 
         self._count_label = QLabel("共 0 条")
@@ -1443,6 +1461,168 @@ class TestCasePage(BasePage):
         
         set_test_cases(cases)
         self._save_config()
+    
+    def _export_test_cases(self) -> None:
+        if self._table.rowCount() == 0:
+            QMessageBox.warning(self, "提示", "表格中没有测试用例")
+            return
+        
+        format_dialog = QInputDialog(self)
+        format_dialog.setWindowTitle("选择导出格式")
+        format_dialog.setLabelText("请选择导出格式:")
+        format_dialog.setComboBoxItems(["Excel (.xlsx)", "JSON (.json)", "YAML (.yaml)"])
+        format_dialog.setTextValue("Excel (.xlsx)")
+        
+        if format_dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        
+        selected_format = format_dialog.textValue()
+        
+        if "Excel" in selected_format:
+            export_format = ExportFormat.EXCEL
+            file_filter = "Excel Files (*.xlsx);;All Files (*)"
+            default_ext = ".xlsx"
+        elif "JSON" in selected_format:
+            export_format = ExportFormat.JSON
+            file_filter = "JSON Files (*.json);;All Files (*)"
+            default_ext = ".json"
+        else:
+            export_format = ExportFormat.YAML
+            file_filter = "YAML Files (*.yaml);;All Files (*)"
+            default_ext = ".yaml"
+        
+        from pathlib import Path
+        from datetime import datetime
+        import json
+        import yaml
+        
+        default_dir = Path.home()
+        if not default_dir.exists():
+            default_dir = Path(".")
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_filename = f"test_cases_{timestamp}{default_ext}"
+        
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "保存测试用例",
+            str(default_dir / default_filename),
+            file_filter
+        )
+        
+        if not file_path:
+            return
+        
+        try:
+            test_cases_data = []
+            for row in range(self._table.rowCount()):
+                status_widget = self._table.cellWidget(row, 5)
+                status_code = status_widget.currentData() if status_widget else "200"
+                
+                tc_data = {
+                    "id": row + 1,
+                    "name": self._table.item(row, 1).text() if self._table.item(row, 1) else "",
+                    "api_path": get_api_path(),
+                    "method": self._table.item(row, 2).text() if self._table.item(row, 2) else "GET",
+                    "headers": json.loads(self._headers_edit.text()) if self._headers_edit.text() else {},
+                    "params": self._table.item(row, 3).text() if self._table.item(row, 3) else "",
+                    "body": self._table.item(row, 4).text() if self._table.item(row, 4) else "",
+                    "expected_status": int(status_code),
+                    "assertions": self._table.item(row, 6).text() if self._table.item(row, 6) else "",
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat()
+                }
+                test_cases_data.append(tc_data)
+            
+            if export_format == ExportFormat.EXCEL:
+                from openpyxl import Workbook
+                from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+                
+                wb = Workbook()
+                ws = wb.active
+                ws.title = "测试用例"
+                
+                header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+                header_font = Font(bold=True, color="FFFFFF", size=11)
+                header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                border = Border(
+                    left=Side(style='thin'),
+                    right=Side(style='thin'),
+                    top=Side(style='thin'),
+                    bottom=Side(style='thin')
+                )
+                
+                headers = ["ID", "用例名称", "接口路径", "请求方法", "请求头", "请求参数", "请求体", "预期状态码", "断言", "创建时间"]
+                for col_num, header in enumerate(headers, 1):
+                    cell = ws.cell(row=1, column=col_num, value=header)
+                    cell.fill = header_fill
+                    cell.font = header_font
+                    cell.alignment = header_alignment
+                    cell.border = border
+                
+                for row_num, tc in enumerate(test_cases_data, 2):
+                    ws.cell(row=row_num, column=1, value=tc["id"])
+                    ws.cell(row=row_num, column=2, value=tc["name"])
+                    ws.cell(row=row_num, column=3, value=tc["api_path"])
+                    ws.cell(row=row_num, column=4, value=tc["method"])
+                    
+                    headers_value = json.dumps(tc["headers"], ensure_ascii=False) if tc["headers"] else ""
+                    ws.cell(row=row_num, column=5, value=headers_value)
+                    
+                    ws.cell(row=row_num, column=6, value=tc["params"])
+                    
+                    body_value = tc["body"] if tc["body"] else ""
+                    ws.cell(row=row_num, column=7, value=body_value)
+                    
+                    ws.cell(row=row_num, column=8, value=tc["expected_status"])
+                    
+                    ws.cell(row=row_num, column=9, value=tc["assertions"])
+                    
+                    ws.cell(row=row_num, column=10, value=tc["created_at"][:19].replace("T", " "))
+                    
+                    for col_num in range(1, 11):
+                        cell = ws.cell(row=row_num, column=col_num)
+                        cell.border = border
+                        cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+                
+                column_widths = [8, 25, 35, 12, 30, 30, 30, 12, 35, 20]
+                for col_num, width in enumerate(column_widths, 1):
+                    ws.column_dimensions[chr(64 + col_num)].width = width
+                
+                wb.save(file_path)
+                
+            elif export_format == ExportFormat.JSON:
+                export_data = {
+                    "export_info": {
+                        "exported_at": datetime.now().isoformat(),
+                        "total_count": len(test_cases_data),
+                        "version": "1.0"
+                    },
+                    "test_cases": test_cases_data
+                }
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(export_data, f, ensure_ascii=False, indent=2)
+                    
+            else:
+                export_data = {
+                    "export_info": {
+                        "exported_at": datetime.now().isoformat(),
+                        "total_count": len(test_cases_data),
+                        "version": "1.0"
+                    },
+                    "test_cases": test_cases_data
+                }
+                with open(file_path, "w", encoding="utf-8") as f:
+                    yaml.dump(export_data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+            
+            QMessageBox.information(self, "成功", f"测试用例已导出到: {file_path}")
+            _logger.info(f"测试用例导出成功: {file_path}, 格式: {export_format.value}")
+            
+        except PermissionError:
+            QMessageBox.critical(self, "错误", f"权限不足，无法保存到: {file_path}\n请选择其他目录或以管理员身份运行")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"导出失败: {str(e)}")
+            _logger.error(f"导出测试用例失败: {str(e)}")
     
     def refresh(self) -> None:
         self._load_ai_models()
