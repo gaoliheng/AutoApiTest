@@ -1467,6 +1467,21 @@ class TestCasePage(BasePage):
             QMessageBox.warning(self, "提示", "表格中没有测试用例")
             return
         
+        checked_rows = self._get_checked_rows()
+        
+        if not checked_rows:
+            reply = QMessageBox.question(
+                self,
+                "确认导出",
+                "没有勾选任何测试用例，是否导出所有测试用例？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+            rows_to_export = range(self._table.rowCount())
+        else:
+            rows_to_export = checked_rows
+        
         format_dialog = QInputDialog(self)
         format_dialog.setWindowTitle("选择导出格式")
         format_dialog.setLabelText("请选择导出格式:")
@@ -1515,7 +1530,7 @@ class TestCasePage(BasePage):
         
         try:
             test_cases_data = []
-            for row in range(self._table.rowCount()):
+            for row in rows_to_export:
                 status_widget = self._table.cellWidget(row, 5)
                 status_code = status_widget.currentData() if status_widget else "200"
                 
