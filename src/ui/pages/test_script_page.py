@@ -149,14 +149,31 @@ class ScriptGenerateThread(QThread):
 - 不要合并或省略任何测试用例
 - 测试函数命名规则：test_<接口名>_<场景描述>
 
+## 【严格】断言生成规则（必须遵守）
+1. **HTTP状态码断言（强制）**：每个测试函数必须包含对expected_status的状态码断言
+   - 格式：assert response.status_code == {expected_status}, f"预期状态码 {expected_status}，实际状态码 {response.status_code}"
+   
+2. **断言数量严格限制**：
+   - 如果assertions字段为空或空白：只生成HTTP状态码断言，不要添加任何其他断言
+   - 如果assertions字段有内容：只根据assertions中的描述生成对应断言，**严禁发散或扩展额外的断言**
+   - 例如：用户写了1条断言，脚本里就只能有1条（加上状态码断言共2条）
+   
+3. **禁止发散行为**：
+   - 不要根据接口文档"推测"应该验证什么
+   - 不要自动添加字段存在性检查、类型检查等额外断言
+   - 严格按照assertions字段的字面意思生成断言代码
+   
+4. **自然语言断言转换**：
+   - 将自然语言描述转换为准确的Python断言代码
+   - 保持原意，不要扩展含义
+
 ## 其他要求
-4. 包含必要的断言验证
 5. 添加适当的注释和文档字符串
 6. 使用fixture管理测试数据
 7. 使用提供的BASE_URL + API_PATH作为完整请求地址
 8. 在请求头中添加提供的公共请求头
 9. 根据接口文档理解接口的业务逻辑和参数含义
-10. 根据自然语言描述的请求参数、请求体和断言生成对应的代码
+10. 根据自然语言描述的请求参数、请求体生成对应的代码
 
 请直接输出Python代码，用```python包裹。开头需要导入：
 import pytest
@@ -192,11 +209,17 @@ import json"""
 ## 测试用例
 {cases_json}
 
-请根据以上接口文档和测试用例生成pytest+allure测试脚本。注意：
-1. params、body、assertions字段可能是自然语言描述，请根据描述生成对应的代码
-2. 每个测试用例都要有完整的allure注解
-3. 使用allure.step标记测试步骤
-4. 附加请求和响应信息到allure报告"""
+请根据以上接口文档和测试用例生成pytest+allure测试脚本。
+
+## 重要提醒
+1. **HTTP状态码断言必须生成**：每个用例都要验证 expected_status 字段指定的状态码
+2. **断言严格匹配**：
+   - assertions字段为空时：只判断状态码，不要生成其他断言
+   - assertions字段有内容时：严格按照描述生成，不要发散扩展
+3. params、body字段可能是自然语言描述，请根据描述生成对应的代码
+4. 每个测试用例都要有完整的allure注解
+5. 使用allure.step标记测试步骤
+6. 附加请求和响应信息到allure报告"""
 
             messages = [
                 ChatMessage(role=MessageRole.SYSTEM, content=system_prompt),
