@@ -3,12 +3,12 @@
 block_cipher = None
 
 a = Analysis(
-    ['src/main.py'],
-    pathex=['src'],
+    ['../src/main.py'],
+    pathex=['../'],
     binaries=[],
     datas=[
-        ('data', 'data'),
-        ('src/ui/styles.py', 'src/ui'),
+        ('../src', 'src'),
+        ('../data', 'data'),
     ],
     hiddenimports=[
         'PyQt6.QtCore',
@@ -19,6 +19,8 @@ a = Analysis(
         'yaml',
         'pytest',
         'allure',
+        'jsonpath_ng',
+        'jsonpath_ng.ext',
         'ui',
         'ui.main_window',
         'ui.pages',

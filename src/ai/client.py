@@ -301,4 +301,12 @@ class AIClient:
             self._client.close()
             self._client = None
         if self._async_client:
-            _logger.debug("关闭 AI 客户端")
+            self._async_client.close()
+            self._async_client = None
+        _logger.debug("AI 客户端已关闭")
+
+    def __enter__(self) -> "AIClient":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()

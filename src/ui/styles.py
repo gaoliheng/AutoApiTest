@@ -95,13 +95,19 @@ class StyleManager:
                     padding: 12px 15px;
                     border-radius: 6px;
                     margin: 2px 0;
+                    border: none;
+                    outline: none;
                 }
                 QListWidget::item:selected {
                     background-color: #2196f3;
                     color: white;
+                    border: none;
+                    outline: none;
                 }
                 QListWidget::item:hover:!selected {
                     background-color: #e3f2fd;
+                    border: none;
+                    outline: none;
                 }
             """,
             "tab_widget": """

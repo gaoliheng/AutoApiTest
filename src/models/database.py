@@ -1,9 +1,13 @@
+import atexit
 import sqlite3
 from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
 
 from utils.config import config
+from utils.logger import get_logger
+
+_logger = get_logger("models.database")
 
 
 class Database:
@@ -89,6 +93,24 @@ class Database:
             """)
             
             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS auth_config (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    base_url TEXT NOT NULL,
+                    login_path TEXT NOT NULL,
+                    method TEXT NOT NULL DEFAULT 'POST',
+                    headers TEXT,
+                    body TEXT,
+                    token_path TEXT NOT NULL DEFAULT '$.data.access_token',
+                    token_prefix TEXT DEFAULT 'Bearer',
+                    header_name TEXT DEFAULT 'Authorization',
+                    is_enabled INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_ai_models_is_default 
                 ON ai_models(is_default)
             """)
@@ -107,7 +129,11 @@ class Database:
         if self._connection:
             self._connection.close()
             self._connection = None
-    
+            _logger.debug("数据库连接已关闭")
+
+    def __del__(self) -> None:
+        self.close()
+
     def execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
         with self.get_cursor() as cursor:
             cursor.execute(query, params)
@@ -125,3 +151,4 @@ class Database:
 
 
 db = Database()
+atexit.register(db.close)

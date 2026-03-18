@@ -37,14 +37,15 @@ def clean_build_files(project_root: Path) -> None:
             print(f"  已删除: {pycache}")
 
 
-def install_dependencies() -> bool:
+def install_dependencies(project_root: Path) -> bool:
     print("\n安装依赖...")
-    return run_command([sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "-U"])
+    requirements_path = project_root / "requirements.txt"
+    return run_command([sys.executable, "-m", "pip", "install", "-r", str(requirements_path), "-U"])
 
 
 def build_executable(project_root: Path) -> bool:
     print("\n开始打包...")
-    spec_file = project_root / "AutoApiTest.spec"
+    spec_file = project_root / "build_scripts" / "AutoApiTest.spec"
     if not spec_file.exists():
         print(f"错误: 找不到 spec 文件: {spec_file}")
         return False
@@ -84,15 +85,13 @@ def main() -> int:
     print(f"项目目录: {project_root}")
     print(f"脚本目录: {build_scripts_dir}")
     
-    os.chdir(build_scripts_dir)
-    
     clean_build_files(project_root)
     
-    if not install_dependencies():
+    if not install_dependencies(project_root):
         print("错误: 依赖安装失败")
         return 1
     
-    if not build_executable(build_scripts_dir):
+    if not build_executable(project_root):
         print("错误: 打包失败")
         return 1
     

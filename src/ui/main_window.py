@@ -22,6 +22,7 @@ from ui.pages import (
     AIModelPage,
     TestCasePage,
     TestScriptPage,
+    AuthConfigPage,
 )
 from models.ai_model import AIModel
 
@@ -110,8 +111,9 @@ class MainWindow(QMainWindow):
         
         nav_items = [
             ("AI 模型配置", 0),
-            ("测试用例", 1),
-            ("生成测试脚本", 2),
+            ("登录配置", 1),
+            ("测试用例", 2),
+            ("生成测试脚本", 3),
         ]
         
         for text, index in nav_items:
@@ -138,10 +140,12 @@ class MainWindow(QMainWindow):
         style_manager.apply_style(self._tab_widget, "tab_widget")
         
         self._ai_model_page = AIModelPage(self._on_model_changed)
+        self._auth_config_page = AuthConfigPage()
         self._test_case_page = TestCasePage()
         self._test_script_page = TestScriptPage()
         
         self._tab_widget.addTab(self._ai_model_page, "AI 模型配置")
+        self._tab_widget.addTab(self._auth_config_page, "登录配置")
         self._tab_widget.addTab(self._test_case_page, "测试用例")
         self._tab_widget.addTab(self._test_script_page, "生成测试脚本")
         

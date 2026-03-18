@@ -4,6 +4,7 @@ from typing import Optional
 from dataclasses import dataclass, field, asdict
 
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QClipboard
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -23,10 +24,16 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QDialog,
     QCheckBox,
+    QApplication,
+    QInputDialog,
+    QDialogButtonBox,
 )
 
 from models.ai_model import AIModel
+from models.auth_config import AuthConfig
+from services.auth_service import AuthService
 from ai.client import AIClient, AIModelConfig, ChatMessage, MessageRole
+from core.export_service import ExportService, ExportFormat
 from ui.styles import style_manager
 from ui.pages.base_page import BasePage
 from utils.logger import get_logger
@@ -111,6 +118,122 @@ class TextEditDialog(QDialog):
     
     def get_result(self) -> str:
         return self._result
+
+
+class TokenResultDialog(QDialog):
+    def __init__(self, auth_result, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self._auth_result = auth_result
+        self._init_ui()
+    
+    def _init_ui(self) -> None:
+        self.setWindowTitle("Token 获取成功")
+        self.setMinimumSize(500, 350)
+        
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        
+        info_group = QGroupBox("认证信息")
+        info_layout = QVBoxLayout(info_group)
+        
+        header_name_label = QLabel(f"Header 名称: {self._auth_result.header_name}")
+        header_name_label.setStyleSheet("font-size: 13px; color: #424242;")
+        info_layout.addWidget(header_name_label)
+        
+        header_value_label = QLabel(f"Header 值: {self._auth_result.header_value}")
+        header_value_label.setStyleSheet("font-size: 13px; color: #424242;")
+        header_value_label.setWordWrap(True)
+        info_layout.addWidget(header_value_label)
+        
+        token_label = QLabel(f"Token: {self._auth_result.token}")
+        token_label.setStyleSheet("font-size: 13px; color: #424242;")
+        token_label.setWordWrap(True)
+        info_layout.addWidget(token_label)
+        
+        layout.addWidget(info_group)
+        
+        copy_group = QGroupBox("复制到剪贴板")
+        copy_layout = QHBoxLayout(copy_group)
+        
+        copy_header_btn = QPushButton("复制 Header 值")
+        copy_header_btn.clicked.connect(self._copy_header_value)
+        copy_header_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e3f2fd;
+                color: #1565c0;
+                border: 1px solid #90caf9;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+            }
+        """)
+        copy_layout.addWidget(copy_header_btn)
+        
+        copy_token_btn = QPushButton("复制 Token")
+        copy_token_btn.clicked.connect(self._copy_token)
+        copy_token_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e8f5e9;
+                color: #388e3c;
+                border: 1px solid #a5d6a7;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+            }
+        """)
+        copy_layout.addWidget(copy_token_btn)
+        
+        copy_json_btn = QPushButton("复制 JSON 格式")
+        copy_json_btn.clicked.connect(self._copy_json)
+        copy_json_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #fff3e0;
+                color: #e65100;
+                border: 1px solid #ffcc80;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #ffe0b2;
+            }
+        """)
+        copy_layout.addWidget(copy_json_btn)
+        
+        layout.addWidget(copy_group)
+        
+        tip_label = QLabel("提示: 复制后可在请求头编辑器中粘贴使用")
+        tip_label.setStyleSheet("color: #757575; font-size: 12px;")
+        layout.addWidget(tip_label)
+        
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        button_box.accepted.connect(self.accept)
+        layout.addWidget(button_box)
+    
+    def _copy_header_value(self) -> None:
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self._auth_result.header_value)
+        QMessageBox.information(self, "成功", "Header 值已复制到剪贴板")
+    
+    def _copy_token(self) -> None:
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self._auth_result.token)
+        QMessageBox.information(self, "成功", "Token 已复制到剪贴板")
+    
+    def _copy_json(self) -> None:
+        import json
+        json_str = json.dumps({
+            self._auth_result.header_name: self._auth_result.header_value
+        }, ensure_ascii=False, indent=2)
+        clipboard = QApplication.clipboard()
+        clipboard.setText(json_str)
+        QMessageBox.information(self, "成功", "JSON 格式已复制到剪贴板")
 
 
 class GenerateThread(QThread):
@@ -416,6 +539,24 @@ class TestCasePage(BasePage):
         """)
         config_layout.addWidget(self._headers_btn)
 
+        self._get_token_btn = QPushButton("获取Token")
+        self._get_token_btn.setMinimumWidth(100)
+        self._get_token_btn.clicked.connect(self._on_get_token)
+        self._get_token_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #fff3e0;
+                color: #e65100;
+                border: 1px solid #ffcc80;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #ffe0b2;
+            }
+        """)
+        config_layout.addWidget(self._get_token_btn)
+
         self._headers_status_label = QLabel("")
         self._headers_status_label.setStyleSheet("font-weight: normal; color: #4caf50; font-size: 12px; min-width: 80px;")
         config_layout.addWidget(self._headers_status_label)
@@ -709,6 +850,23 @@ class TestCasePage(BasePage):
         """)
         table_btn_layout.addWidget(self._clear_table_btn)
 
+        self._export_btn = QPushButton("导出")
+        self._export_btn.clicked.connect(self._export_test_cases)
+        self._export_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e8f5e9;
+                color: #388e3c;
+                border: 1px solid #a5d6a7;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+            }
+        """)
+        table_btn_layout.addWidget(self._export_btn)
+
         table_btn_layout.addStretch()
 
         self._count_label = QLabel("共 0 条")
@@ -865,6 +1023,54 @@ class TestCasePage(BasePage):
         else:
             self._headers_status_label.setText("")
     
+    def _on_get_token(self) -> None:
+        enabled_configs = AuthConfig.get_enabled()
+        
+        if not enabled_configs:
+            QMessageBox.warning(
+                self, 
+                "提示", 
+                "没有启用的登录配置，请先在「登录配置」页面添加并启用配置"
+            )
+            return
+        
+        if len(enabled_configs) == 1:
+            self._execute_login_and_show_token(enabled_configs[0])
+        else:
+            config_names = [config.name for config in enabled_configs]
+            selected_name, ok = QInputDialog.getItem(
+                self,
+                "选择登录配置",
+                "请选择要使用的登录配置:",
+                config_names,
+                0,
+                False
+            )
+            if ok and selected_name:
+                selected_config = next(
+                    (c for c in enabled_configs if c.name == selected_name), 
+                    None
+                )
+                if selected_config:
+                    self._execute_login_and_show_token(selected_config)
+    
+    def _execute_login_and_show_token(self, auth_config: AuthConfig) -> None:
+        self._get_token_btn.setEnabled(False)
+        self._get_token_btn.setText("获取中...")
+        QApplication.processEvents()
+        
+        try:
+            result = AuthService.execute_login(auth_config)
+            
+            if result.success:
+                dialog = TokenResultDialog(result, self)
+                dialog.exec()
+            else:
+                QMessageBox.critical(self, "登录失败", result.error_message)
+        finally:
+            self._get_token_btn.setEnabled(True)
+            self._get_token_btn.setText("获取Token")
+    
     def _on_select_all(self, state: int) -> None:
         checked = state == Qt.CheckState.Checked.value
         for row in range(self._table.rowCount()):
@@ -927,16 +1133,32 @@ class TestCasePage(BasePage):
                 self._save_to_store()
     
     def _go_to_script_page(self) -> None:
+        if self._table.rowCount() == 0:
+            QMessageBox.warning(self, "提示", "请先添加或生成测试用例")
+            return
+        
+        base_url = self._base_url_edit.text().strip()
+        if not base_url:
+            QMessageBox.warning(self, "提示", "请先配置 Base URL")
+            return
+        
+        api_path = self._api_path_edit.text().strip()
+        if not api_path:
+            QMessageBox.warning(self, "提示", "请先配置接口路径")
+            return
+        
         checked_rows = self._get_checked_rows()
         if checked_rows:
             set_selected_indices(checked_rows)
         else:
             set_selected_indices(list(range(self._table.rowCount())))
         
+        self._save_to_store()
+        
         from ui.main_window import MainWindow
         window = self.window()
         if isinstance(window, MainWindow):
-            window._nav_list.setCurrentRow(2)
+            window._nav_list.setCurrentRow(3)
     
     def _load_ai_models(self) -> None:
         self._model_combo.clear()
@@ -1239,6 +1461,183 @@ class TestCasePage(BasePage):
         
         set_test_cases(cases)
         self._save_config()
+    
+    def _export_test_cases(self) -> None:
+        if self._table.rowCount() == 0:
+            QMessageBox.warning(self, "提示", "表格中没有测试用例")
+            return
+        
+        checked_rows = self._get_checked_rows()
+        
+        if not checked_rows:
+            reply = QMessageBox.question(
+                self,
+                "确认导出",
+                "没有勾选任何测试用例，是否导出所有测试用例？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+            rows_to_export = range(self._table.rowCount())
+        else:
+            rows_to_export = checked_rows
+        
+        format_dialog = QInputDialog(self)
+        format_dialog.setWindowTitle("选择导出格式")
+        format_dialog.setLabelText("请选择导出格式:")
+        format_dialog.setComboBoxItems(["Excel (.xlsx)", "JSON (.json)", "YAML (.yaml)"])
+        format_dialog.setTextValue("Excel (.xlsx)")
+        
+        if format_dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        
+        selected_format = format_dialog.textValue()
+        
+        if "Excel" in selected_format:
+            export_format = ExportFormat.EXCEL
+            file_filter = "Excel Files (*.xlsx);;All Files (*)"
+            default_ext = ".xlsx"
+        elif "JSON" in selected_format:
+            export_format = ExportFormat.JSON
+            file_filter = "JSON Files (*.json);;All Files (*)"
+            default_ext = ".json"
+        else:
+            export_format = ExportFormat.YAML
+            file_filter = "YAML Files (*.yaml);;All Files (*)"
+            default_ext = ".yaml"
+        
+        from pathlib import Path
+        from datetime import datetime
+        import json
+        import yaml
+        
+        default_dir = Path.home()
+        if not default_dir.exists():
+            default_dir = Path(".")
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_filename = f"test_cases_{timestamp}{default_ext}"
+        
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "保存测试用例",
+            str(default_dir / default_filename),
+            file_filter
+        )
+        
+        if not file_path:
+            return
+        
+        try:
+            test_cases_data = []
+            for row in rows_to_export:
+                status_widget = self._table.cellWidget(row, 5)
+                status_code = status_widget.currentData() if status_widget else "200"
+                
+                tc_data = {
+                    "id": row + 1,
+                    "name": self._table.item(row, 1).text() if self._table.item(row, 1) else "",
+                    "api_path": get_api_path(),
+                    "method": self._table.item(row, 2).text() if self._table.item(row, 2) else "GET",
+                    "headers": json.loads(self._headers_edit.text()) if self._headers_edit.text() else {},
+                    "params": self._table.item(row, 3).text() if self._table.item(row, 3) else "",
+                    "body": self._table.item(row, 4).text() if self._table.item(row, 4) else "",
+                    "expected_status": int(status_code),
+                    "assertions": self._table.item(row, 6).text() if self._table.item(row, 6) else "",
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat()
+                }
+                test_cases_data.append(tc_data)
+            
+            if export_format == ExportFormat.EXCEL:
+                from openpyxl import Workbook
+                from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+                
+                wb = Workbook()
+                ws = wb.active
+                ws.title = "测试用例"
+                
+                header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+                header_font = Font(bold=True, color="FFFFFF", size=11)
+                header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                border = Border(
+                    left=Side(style='thin'),
+                    right=Side(style='thin'),
+                    top=Side(style='thin'),
+                    bottom=Side(style='thin')
+                )
+                
+                headers = ["ID", "用例名称", "接口路径", "请求方法", "请求头", "请求参数", "请求体", "预期状态码", "断言", "创建时间"]
+                for col_num, header in enumerate(headers, 1):
+                    cell = ws.cell(row=1, column=col_num, value=header)
+                    cell.fill = header_fill
+                    cell.font = header_font
+                    cell.alignment = header_alignment
+                    cell.border = border
+                
+                for row_num, tc in enumerate(test_cases_data, 2):
+                    ws.cell(row=row_num, column=1, value=tc["id"])
+                    ws.cell(row=row_num, column=2, value=tc["name"])
+                    ws.cell(row=row_num, column=3, value=tc["api_path"])
+                    ws.cell(row=row_num, column=4, value=tc["method"])
+                    
+                    headers_value = json.dumps(tc["headers"], ensure_ascii=False) if tc["headers"] else ""
+                    ws.cell(row=row_num, column=5, value=headers_value)
+                    
+                    ws.cell(row=row_num, column=6, value=tc["params"])
+                    
+                    body_value = tc["body"] if tc["body"] else ""
+                    ws.cell(row=row_num, column=7, value=body_value)
+                    
+                    ws.cell(row=row_num, column=8, value=tc["expected_status"])
+                    
+                    ws.cell(row=row_num, column=9, value=tc["assertions"])
+                    
+                    ws.cell(row=row_num, column=10, value=tc["created_at"][:19].replace("T", " "))
+                    
+                    for col_num in range(1, 11):
+                        cell = ws.cell(row=row_num, column=col_num)
+                        cell.border = border
+                        cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+                
+                column_widths = [8, 25, 35, 12, 30, 30, 30, 12, 35, 20]
+                for col_num, width in enumerate(column_widths, 1):
+                    ws.column_dimensions[chr(64 + col_num)].width = width
+                
+                wb.save(file_path)
+                
+            elif export_format == ExportFormat.JSON:
+                export_data = {
+                    "export_info": {
+                        "exported_at": datetime.now().isoformat(),
+                        "total_count": len(test_cases_data),
+                        "version": "1.0"
+                    },
+                    "test_cases": test_cases_data
+                }
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(export_data, f, ensure_ascii=False, indent=2)
+                    
+            else:
+                export_data = {
+                    "export_info": {
+                        "exported_at": datetime.now().isoformat(),
+                        "total_count": len(test_cases_data),
+                        "version": "1.0"
+                    },
+                    "test_cases": test_cases_data
+                }
+                with open(file_path, "w", encoding="utf-8") as f:
+                    yaml.dump(export_data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+            
+            QMessageBox.information(self, "成功", f"测试用例已导出到: {file_path}")
+            _logger.info(f"测试用例导出成功: {file_path}, 格式: {export_format.value}")
+            
+        except PermissionError:
+            QMessageBox.critical(self, "错误", f"权限不足，无法保存到: {file_path}\n请选择其他目录或以管理员身份运行")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"导出失败: {str(e)}")
+            _logger.error(f"导出测试用例失败: {str(e)}")
     
     def refresh(self) -> None:
         self._load_ai_models()
