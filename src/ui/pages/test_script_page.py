@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 )
 
 from models.ai_model import AIModel
+from models.auth_config import AuthConfig
 from ai.client import AIClient, AIModelConfig, ChatMessage, MessageRole
 from core.code_validator import CodeValidator, ValidationLevel
 from ui.styles import style_manager
@@ -98,6 +99,7 @@ class ScriptGenerateThread(QThread):
         api_path: str,
         common_headers: str,
         api_doc: str,
+        auth_config=None,
         parent: Optional[QWidget] = None
     ) -> None:
         super().__init__(parent)
@@ -107,6 +109,7 @@ class ScriptGenerateThread(QThread):
         self._api_path = api_path
         self._common_headers = common_headers
         self._api_doc = api_doc
+        self._auth_config = auth_config
     
     def run(self) -> None:
         try:
@@ -132,6 +135,50 @@ class ScriptGenerateThread(QThread):
 1. 使用pytest框架编写测试脚本
 2. 使用httpx库发送HTTP请求
 3. 代码要符合PEP8规范
+
+## 【重要】自动登录获取Token功能
+如果提供了登录配置信息，必须在生成的脚本中包含自动登录获取Token的逻辑：
+
+1. 创建一个pytest fixture函数，命名为`get_auth_token`
+2. 在fixture中调用登录接口获取Token
+3. 使用JSONPath从响应中提取Token
+4. 将Token格式化为请求头（如：Bearer token）
+5. fixture返回格式化后的请求头字典
+
+登录fixture示例代码：
+```python
+@pytest.fixture(scope="session")
+def get_auth_token():
+    '''获取认证Token'''
+    login_url = "{base_url}{login_path}"
+    login_headers = {login_headers_dict}
+    login_body = {login_body_dict}
+    
+    with httpx.Client() as client:
+        response = client.post(
+            url=login_url,
+            headers=login_headers,
+            json=login_body,
+            timeout=30
+        )
+        response.raise_for_status()
+        
+        # 使用JSONPath提取Token
+        response_data = response.json()
+        token = response_data
+        # 根据token_path提取token，例如：response_data["data"]["access_token"]
+        
+        # 格式化为请求头
+        # 如果token_prefix为空，则直接使用token；否则添加前缀（如：Bearer token）
+        if "{token_prefix}":
+            auth_header = f"{token_prefix} {{token}}"
+        else:
+            auth_header = token
+        return {{header_name: auth_header}}
+```
+
+6. 在每个测试函数中使用该fixture获取认证头
+7. 将认证头合并到请求头中
 
 ## Allure框架要求（必须）
 每个测试函数都要添加allure注解：
@@ -171,7 +218,7 @@ class ScriptGenerateThread(QThread):
 5. 添加适当的注释和文档字符串
 6. 使用fixture管理测试数据
 7. 使用提供的BASE_URL + API_PATH作为完整请求地址
-8. 在请求头中添加提供的公共请求头
+8. 在请求头中添加提供的公共请求头（如果有）
 9. 根据接口文档理解接口的业务逻辑和参数含义
 10. 根据自然语言描述的请求参数、请求体生成对应的代码
 
@@ -179,7 +226,8 @@ class ScriptGenerateThread(QThread):
 import pytest
 import allure
 import httpx
-import json"""
+import json
+from jsonpath_ng import parse"""
 
             cases_data = []
             for case in self._test_cases:
@@ -195,6 +243,24 @@ import json"""
             cases_json = json.dumps(cases_data, ensure_ascii=False, indent=2)
             headers_text = self._common_headers if self._common_headers else "无"
             
+            # 构建登录配置信息
+            login_config_text = ""
+            if self._auth_config:
+                token_prefix_text = self._auth_config.token_prefix if self._auth_config.token_prefix else "无（不添加前缀）"
+                login_config_text = f"""
+## 登录配置（用于自动获取Token）
+- 登录URL: {self._auth_config.base_url}{self._auth_config.login_path}
+- 登录方法: {self._auth_config.method}
+- 登录请求头: {json.dumps(self._auth_config.headers, ensure_ascii=False)}
+- 登录请求体: {json.dumps(self._auth_config.body, ensure_ascii=False)}
+- Token提取路径: {self._auth_config.token_path}
+- Token前缀: {token_prefix_text}
+- Header名称: {self._auth_config.header_name}
+
+【重要】请根据以上登录配置，在生成的测试脚本中添加 `get_auth_token` fixture，实现自动登录获取Token的功能。
+注意：如果 Token 前缀为空，则直接使用 Token 值，不要添加任何前缀（如 Bearer）。
+"""
+            
             user_message = f"""以下是接口文档和测试配置：
 
 ## 接口文档
@@ -205,7 +271,7 @@ import json"""
 - API_PATH: {self._api_path}
 - 完整URL: {self._base_url}{self._api_path}
 - 公共请求头: {headers_text}
-
+{login_config_text}
 ## 测试用例
 {cases_json}
 
@@ -219,7 +285,8 @@ import json"""
 3. params、body字段可能是自然语言描述，请根据描述生成对应的代码
 4. 每个测试用例都要有完整的allure注解
 5. 使用allure.step标记测试步骤
-6. 附加请求和响应信息到allure报告"""
+6. 附加请求和响应信息到allure报告
+7. 如果提供了登录配置，必须在脚本中实现自动登录获取Token的fixture"""
 
             messages = [
                 ChatMessage(role=MessageRole.SYSTEM, content=system_prompt),
@@ -569,6 +636,9 @@ allure open allure-report
         
         common_headers = get_common_headers()
         
+        # 获取登录配置（如果有）
+        auth_config = AuthConfig.get_first_enabled()
+        
         model_id = self._model_combo.currentData()
         if not model_id:
             QMessageBox.warning(self, "提示", "请选择 AI 模型")
@@ -581,7 +651,7 @@ allure open allure-report
 
         self._current_ai_model = ai_model
 
-        _logger.info(f"开始生成测试脚本: model={ai_model.name}, test_cases={len(test_cases)}, url={base_url}{api_path}")
+        _logger.info(f"开始生成测试脚本: model={ai_model.name}, test_cases={len(test_cases)}, url={base_url}{api_path}, auth_config={auth_config.name if auth_config else 'None'}")
         
         self._generate_btn.setEnabled(False)
         self._progress_bar.setVisible(True)
@@ -594,6 +664,7 @@ allure open allure-report
             api_path=api_path,
             common_headers=common_headers,
             api_doc=api_doc,
+            auth_config=auth_config,
         )
         self._generate_thread.progress.connect(self._on_progress)
         self._generate_thread.finished.connect(self._on_finished)
@@ -825,7 +896,6 @@ allure open allure-report
         selected_indices = get_selected_indices()
         base_url = get_base_url()
         api_path = get_api_path()
-        common_headers = get_common_headers()
         
         if selected_indices:
             selected_count = len([i for i in selected_indices if i < len(all_test_cases)])
@@ -840,8 +910,5 @@ allure open allure-report
             config_parts.append(f"Base URL: {base_url}")
         elif api_path:
             config_parts.append(f"API路径: {api_path}")
-        
-        if common_headers:
-            config_parts.append(f"请求头: {len(common_headers)} 项")
         
         self._config_label.setText(" | ".join(config_parts) if config_parts else "请在测试用例页面配置接口信息")

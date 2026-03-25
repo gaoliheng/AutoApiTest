@@ -16,7 +16,7 @@ class AuthConfig:
     headers: dict = None
     body: dict = None
     token_path: str = "$.data.access_token"
-    token_prefix: str = "Bearer"
+    token_prefix: str = ""
     header_name: str = "Authorization"
     is_enabled: bool = True
     created_at: Optional[datetime] = None
@@ -53,7 +53,7 @@ class AuthConfig:
             headers=headers,
             body=body,
             token_path=row["token_path"],
-            token_prefix=row["token_prefix"] or "Bearer",
+            token_prefix=row["token_prefix"] if row["token_prefix"] is not None else "Bearer",
             header_name=row["header_name"] or "Authorization",
             is_enabled=bool(row["is_enabled"]),
             created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None,
