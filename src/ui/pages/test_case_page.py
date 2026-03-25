@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass, field, asdict
 
@@ -30,10 +31,12 @@ from PyQt6.QtWidgets import (
 )
 
 from models.ai_model import AIModel
+from models.test_case_history import TestCaseHistory
 from ai.client import AIClient, AIModelConfig, ChatMessage, MessageRole
 from core.export_service import ExportService, ExportFormat
 from ui.styles import style_manager
 from ui.pages.base_page import BasePage
+from ui.dialogs.test_case_history_dialog import TestCaseHistoryDialog
 from utils.logger import get_logger
 
 _logger = get_logger("ui.test_case_page")
@@ -550,6 +553,42 @@ class TestCasePage(BasePage):
             }
         """)
         ai_layout.addWidget(self._generate_btn)
+
+        # 保存到历史按钮
+        self._save_history_btn = QPushButton("保存到历史")
+        self._save_history_btn.clicked.connect(self._save_to_history)
+        self._save_history_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e3f2fd;
+                color: #1565c0;
+                border: 1px solid #90caf9;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+            }
+        """)
+        ai_layout.addWidget(self._save_history_btn)
+
+        # 历史记录按钮
+        self._history_btn = QPushButton("历史记录")
+        self._history_btn.clicked.connect(self._show_history_dialog)
+        self._history_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f3e5f5;
+                color: #7b1fa2;
+                border: 1px solid #ce93d8;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e1bee7;
+            }
+        """)
+        ai_layout.addWidget(self._history_btn)
 
         ai_layout.addStretch()
         second_bar.addWidget(ai_group)
@@ -1389,3 +1428,182 @@ class TestCasePage(BasePage):
     
     def refresh(self) -> None:
         self._load_ai_models()
+    
+    def _save_to_history(self) -> None:
+        """保存当前用例到历史记录"""
+        if self._table.rowCount() == 0:
+            QMessageBox.warning(self, "提示", "当前没有测试用例可保存")
+            return
+        
+        # 获取当前用例数据
+        test_cases = []
+        for row in range(self._table.rowCount()):
+            status_widget = self._table.cellWidget(row, 5)
+            status_code = status_widget.currentData() if status_widget else "200"
+            
+            case = {
+                "name": self._table.item(row, 1).text() if self._table.item(row, 1) else "",
+                "method": self._table.item(row, 2).text() if self._table.item(row, 2) else "GET",
+                "params": self._table.item(row, 3).text() if self._table.item(row, 3) else "",
+                "body": self._table.item(row, 4).text() if self._table.item(row, 4) else "",
+                "expected_status": int(status_code),
+                "assertions": self._table.item(row, 6).text() if self._table.item(row, 6) else "",
+            }
+            test_cases.append(case)
+        
+        # 获取接口配置
+        base_url = self._base_url_edit.text().strip()
+        api_path = self._api_path_edit.text().strip()
+        common_headers = _common_headers_store
+        api_document = self._doc_input.toPlainText()
+        
+        # 生成默认名称
+        default_name = f"{api_path.split('/')[-1] if api_path else '用例'}_{datetime.now().strftime('%m%d_%H%M')}"
+        
+        # 弹出输入对话框
+        from PyQt6.QtWidgets import QInputDialog
+        name, ok = QInputDialog.getText(
+            self,
+            "保存到历史记录",
+            "请输入历史记录名称:",
+            QLineEdit.EchoMode.Normal,
+            default_name
+        )
+        
+        if not ok or not name.strip():
+            return
+        
+        # 询问是否收藏
+        reply = QMessageBox.question(
+            self,
+            "收藏设置",
+            "是否将此记录标记为收藏？\n（收藏记录不受50条限制）",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        is_favorite = reply == QMessageBox.StandardButton.Yes
+        
+        # 创建历史记录
+        history = TestCaseHistory(
+            name=name.strip(),
+            description=f"接口: {api_path}",
+            test_cases=test_cases,
+            base_url=base_url,
+            api_path=api_path,
+            common_headers=common_headers,
+            api_document=api_document,
+            is_favorite=is_favorite,
+        )
+        
+        try:
+            history.save()
+            
+            msg = f"历史记录保存成功！\n名称: {history.name}\n用例数: {len(test_cases)}"
+            if is_favorite:
+                msg += "\n已标记为收藏"
+            
+            QMessageBox.information(self, "成功", msg)
+            _logger.info(f"保存历史记录成功: {history.name}, 用例数: {len(test_cases)}")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"保存失败: {str(e)}")
+            _logger.error(f"保存历史记录失败: {str(e)}")
+    
+    def _show_history_dialog(self) -> None:
+        """显示历史记录对话框"""
+        dialog = TestCaseHistoryDialog(
+            on_load_history=self._load_history_to_table,
+            parent=self
+        )
+        dialog.exec()
+    
+    def _load_history_to_table(self, history: TestCaseHistory) -> None:
+        """将历史记录加载到表格"""
+        # 清空当前表格
+        self._table.setRowCount(0)
+        
+        # 恢复接口配置
+        if history.base_url:
+            self._base_url_edit.setText(history.base_url)
+        if history.api_path:
+            self._api_path_edit.setText(history.api_path)
+        if history.common_headers:
+            set_common_headers(history.common_headers)
+        if history.api_document:
+            self._doc_input.setPlainText(history.api_document)
+            self._update_doc_status()
+        
+        # 加载用例到表格
+        test_cases = history.test_cases if history.test_cases else []
+        self._table.setRowCount(len(test_cases))
+        
+        for row, case_data in enumerate(test_cases):
+            # 复用 _load_cases_to_table 的逻辑
+            checkbox = QCheckBox()
+            checkbox.setStyleSheet("""
+                QCheckBox {
+                    spacing: 0px;
+                }
+                QCheckBox::indicator {
+                    width: 16px;
+                    height: 16px;
+                    border-radius: 3px;
+                    border: 2px solid #bdbdbd;
+                }
+                QCheckBox::indicator:checked {
+                    background-color: #2196f3;
+                    border-color: #2196f3;
+                }
+                QCheckBox::indicator:hover {
+                    border-color: #2196f3;
+                }
+            """)
+            self._table.setCellWidget(row, 0, checkbox)
+            
+            self._table.setItem(row, 1, QTableWidgetItem(case_data.get("name", "")))
+            self._table.setItem(row, 2, QTableWidgetItem(case_data.get("method", "GET")))
+            self._table.setItem(row, 3, QTableWidgetItem(str(case_data.get("params", ""))))
+            self._table.setItem(row, 4, QTableWidgetItem(str(case_data.get("body", ""))))
+            
+            status_combo = QComboBox()
+            for code, desc in HTTP_STATUS_CODES.items():
+                status_combo.addItem(desc, code)
+            expected_status = case_data.get("expected_status", 200)
+            status_combo.setCurrentText(HTTP_STATUS_CODES.get(str(expected_status), str(expected_status)))
+            status_combo.currentIndexChanged.connect(lambda _, r=row: self._on_status_changed(r))
+            status_combo.setStyleSheet("""
+                QComboBox {
+                    background-color: #fafafa;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 12px;
+                    min-width: 140px;
+                }
+                QComboBox:hover {
+                    border-color: #bdbdbd;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                    width: 20px;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: #ffffff;
+                    border: 1px solid #e0e0e0;
+                    selection-background-color: #e3f2fd;
+                    min-width: 200px;
+                }
+            """)
+            self._table.setCellWidget(row, 5, status_combo)
+            
+            self._table.setItem(row, 6, QTableWidgetItem(str(case_data.get("assertions", ""))))
+        
+        self._select_all_cb.setChecked(False)
+        self._update_count()
+        self._save_to_store()
+        
+        QMessageBox.information(
+            self,
+            "加载成功",
+            f"已加载历史记录 '{history.name}'\n共 {len(test_cases)} 个测试用例"
+        )
+        _logger.info(f"加载历史记录到表格: {history.name}, 用例数: {len(test_cases)}")
