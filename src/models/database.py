@@ -124,6 +124,32 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_test_scripts_name 
                 ON test_scripts(name)
             """)
+            
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS test_case_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    test_cases TEXT NOT NULL,
+                    base_url TEXT,
+                    api_path TEXT,
+                    common_headers TEXT,
+                    api_document TEXT,
+                    is_favorite INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_test_case_history_favorite 
+                ON test_case_history(is_favorite)
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_test_case_history_created 
+                ON test_case_history(created_at)
+            """)
     
     def close(self) -> None:
         if self._connection:
