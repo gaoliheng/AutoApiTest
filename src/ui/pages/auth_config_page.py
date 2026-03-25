@@ -142,8 +142,7 @@ class AuthConfigDialog(QDialog):
         token_layout.addRow("Token 路径:", self._token_path_edit)
 
         self._token_prefix_edit = QLineEdit()
-        self._token_prefix_edit.setPlaceholderText("Bearer")
-        self._token_prefix_edit.setText("Bearer")
+        self._token_prefix_edit.setPlaceholderText("（可选）例如：Bearer")
         self._token_prefix_edit.setMinimumWidth(150)
         token_layout.addRow("Token 前缀:", self._token_prefix_edit)
 
@@ -224,7 +223,7 @@ class AuthConfigDialog(QDialog):
                 self._body_edit.setPlainText(json.dumps(self._auth_config.body, ensure_ascii=False, indent=2))
             
             self._token_path_edit.setText(self._auth_config.token_path)
-            self._token_prefix_edit.setText(self._auth_config.token_prefix or "Bearer")
+            self._token_prefix_edit.setText(self._auth_config.token_prefix if self._auth_config.token_prefix else "")
             self._header_name_edit.setText(self._auth_config.header_name or "Authorization")
     
     def _test_login(self) -> None:

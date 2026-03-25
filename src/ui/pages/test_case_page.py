@@ -30,8 +30,6 @@ from PyQt6.QtWidgets import (
 )
 
 from models.ai_model import AIModel
-from models.auth_config import AuthConfig
-from services.auth_service import AuthService
 from ai.client import AIClient, AIModelConfig, ChatMessage, MessageRole
 from core.export_service import ExportService, ExportFormat
 from ui.styles import style_manager
@@ -118,122 +116,6 @@ class TextEditDialog(QDialog):
     
     def get_result(self) -> str:
         return self._result
-
-
-class TokenResultDialog(QDialog):
-    def __init__(self, auth_result, parent: Optional[QWidget] = None) -> None:
-        super().__init__(parent)
-        self._auth_result = auth_result
-        self._init_ui()
-    
-    def _init_ui(self) -> None:
-        self.setWindowTitle("Token 获取成功")
-        self.setMinimumSize(500, 350)
-        
-        layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        
-        info_group = QGroupBox("认证信息")
-        info_layout = QVBoxLayout(info_group)
-        
-        header_name_label = QLabel(f"Header 名称: {self._auth_result.header_name}")
-        header_name_label.setStyleSheet("font-size: 13px; color: #424242;")
-        info_layout.addWidget(header_name_label)
-        
-        header_value_label = QLabel(f"Header 值: {self._auth_result.header_value}")
-        header_value_label.setStyleSheet("font-size: 13px; color: #424242;")
-        header_value_label.setWordWrap(True)
-        info_layout.addWidget(header_value_label)
-        
-        token_label = QLabel(f"Token: {self._auth_result.token}")
-        token_label.setStyleSheet("font-size: 13px; color: #424242;")
-        token_label.setWordWrap(True)
-        info_layout.addWidget(token_label)
-        
-        layout.addWidget(info_group)
-        
-        copy_group = QGroupBox("复制到剪贴板")
-        copy_layout = QHBoxLayout(copy_group)
-        
-        copy_header_btn = QPushButton("复制 Header 值")
-        copy_header_btn.clicked.connect(self._copy_header_value)
-        copy_header_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e3f2fd;
-                color: #1565c0;
-                border: 1px solid #90caf9;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #bbdefb;
-            }
-        """)
-        copy_layout.addWidget(copy_header_btn)
-        
-        copy_token_btn = QPushButton("复制 Token")
-        copy_token_btn.clicked.connect(self._copy_token)
-        copy_token_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e8f5e9;
-                color: #388e3c;
-                border: 1px solid #a5d6a7;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #c8e6c9;
-            }
-        """)
-        copy_layout.addWidget(copy_token_btn)
-        
-        copy_json_btn = QPushButton("复制 JSON 格式")
-        copy_json_btn.clicked.connect(self._copy_json)
-        copy_json_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #fff3e0;
-                color: #e65100;
-                border: 1px solid #ffcc80;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #ffe0b2;
-            }
-        """)
-        copy_layout.addWidget(copy_json_btn)
-        
-        layout.addWidget(copy_group)
-        
-        tip_label = QLabel("提示: 复制后可在请求头编辑器中粘贴使用")
-        tip_label.setStyleSheet("color: #757575; font-size: 12px;")
-        layout.addWidget(tip_label)
-        
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        button_box.accepted.connect(self.accept)
-        layout.addWidget(button_box)
-    
-    def _copy_header_value(self) -> None:
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self._auth_result.header_value)
-        QMessageBox.information(self, "成功", "Header 值已复制到剪贴板")
-    
-    def _copy_token(self) -> None:
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self._auth_result.token)
-        QMessageBox.information(self, "成功", "Token 已复制到剪贴板")
-    
-    def _copy_json(self) -> None:
-        import json
-        json_str = json.dumps({
-            self._auth_result.header_name: self._auth_result.header_value
-        }, ensure_ascii=False, indent=2)
-        clipboard = QApplication.clipboard()
-        clipboard.setText(json_str)
-        QMessageBox.information(self, "成功", "JSON 格式已复制到剪贴板")
 
 
 class GenerateThread(QThread):
@@ -509,57 +391,6 @@ class TestCasePage(BasePage):
         """)
         self._api_path_edit.textChanged.connect(self._save_config)
         config_layout.addWidget(self._api_path_edit)
-
-        headers_label = QLabel("请求头")
-        headers_label.setStyleSheet("font-weight: 600; color: #424242; font-size: 13px;")
-        config_layout.addWidget(headers_label)
-        self._headers_edit = QLineEdit()
-        self._headers_edit.setPlaceholderText('{"Authorization": "Bearer token"}')
-        self._headers_edit.setMinimumWidth(200)
-        self._headers_edit.setVisible(False)
-        self._headers_edit.textChanged.connect(self._save_config)
-        config_layout.addWidget(self._headers_edit)
-
-        self._headers_btn = QPushButton("点击编辑")
-        self._headers_btn.setMinimumWidth(100)
-        self._headers_btn.clicked.connect(self._show_headers_dialog)
-        self._headers_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #f5f5f5;
-                color: #424242;
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #e3f2fd;
-                border-color: #90caf9;
-            }
-        """)
-        config_layout.addWidget(self._headers_btn)
-
-        self._get_token_btn = QPushButton("获取Token")
-        self._get_token_btn.setMinimumWidth(100)
-        self._get_token_btn.clicked.connect(self._on_get_token)
-        self._get_token_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #fff3e0;
-                color: #e65100;
-                border: 1px solid #ffcc80;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #ffe0b2;
-            }
-        """)
-        config_layout.addWidget(self._get_token_btn)
-
-        self._headers_status_label = QLabel("")
-        self._headers_status_label.setStyleSheet("font-weight: normal; color: #4caf50; font-size: 12px; min-width: 80px;")
-        config_layout.addWidget(self._headers_status_label)
 
         config_layout.addStretch()
         self.add_widget(config_group)
@@ -989,87 +820,6 @@ class TestCasePage(BasePage):
             self._doc_status_label.setText("未填写")
             self._doc_status_label.setStyleSheet("font-weight: normal; color: #999; font-size: 12px;")
         set_api_doc(doc)
-
-    def _show_headers_dialog(self) -> None:
-        current_headers = self._headers_edit.text()
-        dialog = TextEditDialog(
-            "编辑请求头",
-            current_headers,
-            "请输入请求头，支持JSON格式或自然语言描述：\n\n"
-            "示例1（JSON格式）：\n"
-            '{\n'
-            '  "Authorization": "Bearer your_token",\n'
-            '  "Content-Type": "application/json"\n'
-            '}\n\n'
-            "示例2（自然语言）：需要在Header中传入token进行认证",
-            self
-        )
-        dialog.setMinimumSize(500, 400)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            result = dialog.get_result()
-            self._headers_edit.setText(result)
-            self._update_headers_status()
-
-    def _update_headers_status(self) -> None:
-        headers = self._headers_edit.text().strip()
-        if headers:
-            if headers.startswith("{"):
-                self._headers_status_label.setText("已配置 (JSON)")
-                self._headers_status_label.setStyleSheet("font-weight: normal; color: #4caf50; font-size: 12px;")
-            else:
-                chars = len(headers)
-                self._headers_status_label.setText(f"已配置 ({chars}字)")
-                self._headers_status_label.setStyleSheet("font-weight: normal; color: #4caf50; font-size: 12px;")
-        else:
-            self._headers_status_label.setText("")
-    
-    def _on_get_token(self) -> None:
-        enabled_configs = AuthConfig.get_enabled()
-        
-        if not enabled_configs:
-            QMessageBox.warning(
-                self, 
-                "提示", 
-                "没有启用的登录配置，请先在「登录配置」页面添加并启用配置"
-            )
-            return
-        
-        if len(enabled_configs) == 1:
-            self._execute_login_and_show_token(enabled_configs[0])
-        else:
-            config_names = [config.name for config in enabled_configs]
-            selected_name, ok = QInputDialog.getItem(
-                self,
-                "选择登录配置",
-                "请选择要使用的登录配置:",
-                config_names,
-                0,
-                False
-            )
-            if ok and selected_name:
-                selected_config = next(
-                    (c for c in enabled_configs if c.name == selected_name), 
-                    None
-                )
-                if selected_config:
-                    self._execute_login_and_show_token(selected_config)
-    
-    def _execute_login_and_show_token(self, auth_config: AuthConfig) -> None:
-        self._get_token_btn.setEnabled(False)
-        self._get_token_btn.setText("获取中...")
-        QApplication.processEvents()
-        
-        try:
-            result = AuthService.execute_login(auth_config)
-            
-            if result.success:
-                dialog = TokenResultDialog(result, self)
-                dialog.exec()
-            else:
-                QMessageBox.critical(self, "登录失败", result.error_message)
-        finally:
-            self._get_token_btn.setEnabled(True)
-            self._get_token_btn.setText("获取Token")
     
     def _on_select_all(self, state: int) -> None:
         checked = state == Qt.CheckState.Checked.value
@@ -1197,7 +947,7 @@ class TestCasePage(BasePage):
     def _save_config(self) -> None:
         set_base_url(self._base_url_edit.text().strip())
         set_api_path(self._api_path_edit.text().strip())
-        set_common_headers(self._headers_edit.text().strip())
+        set_common_headers("")
     
     def _generate_test_cases(self) -> None:
         doc_content = self._doc_input.toPlainText().strip()
@@ -1247,8 +997,6 @@ class TestCasePage(BasePage):
             self._base_url_edit.setText(base_url)
         if api_path:
             self._api_path_edit.setText(api_path)
-        if common_headers:
-            self._headers_edit.setText(common_headers)
         
         self._load_cases_to_table(test_cases)
         self._save_config()
@@ -1539,7 +1287,7 @@ class TestCasePage(BasePage):
                     "name": self._table.item(row, 1).text() if self._table.item(row, 1) else "",
                     "api_path": get_api_path(),
                     "method": self._table.item(row, 2).text() if self._table.item(row, 2) else "GET",
-                    "headers": json.loads(self._headers_edit.text()) if self._headers_edit.text() else {},
+                    "headers": {},
                     "params": self._table.item(row, 3).text() if self._table.item(row, 3) else "",
                     "body": self._table.item(row, 4).text() if self._table.item(row, 4) else "",
                     "expected_status": int(status_code),
