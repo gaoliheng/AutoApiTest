@@ -1,7 +1,8 @@
 from typing import Optional
+from pathlib import Path
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QKeySequence
+from PyQt6.QtGui import QAction, QKeySequence, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -41,6 +42,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("AutoApiTest - API 自动化测试工具")
         self.setMinimumSize(1280, 800)
         self.resize(1400, 900)
+
+        icon_path = Path(__file__).parent.parent.parent / "data" / "app_icon.png"
+        if icon_path.exists():
+            pixmap = QPixmap(str(icon_path))
+            if not pixmap.isNull():
+                icon = QIcon(pixmap)
+                self.setWindowIcon(icon)
     
     def _init_menubar(self) -> None:
         menubar = self.menuBar()

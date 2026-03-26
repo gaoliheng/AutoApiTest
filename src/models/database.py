@@ -140,6 +140,21 @@ class Database:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS test_dimensions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    dimension_id TEXT NOT NULL UNIQUE,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    enabled INTEGER DEFAULT 1,
+                    priority TEXT DEFAULT 'medium',
+                    is_system INTEGER DEFAULT 0,
+                    sort_order INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_test_case_history_favorite 
@@ -149,6 +164,16 @@ class Database:
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_test_case_history_created 
                 ON test_case_history(created_at)
+            """)
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_test_dimensions_enabled 
+                ON test_dimensions(enabled)
+            """)
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_test_dimensions_sort 
+                ON test_dimensions(sort_order)
             """)
     
     def close(self) -> None:
