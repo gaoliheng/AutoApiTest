@@ -3,6 +3,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QKeySequence, QIcon, QPixmap
+from PyQt6.QtWidgets import QStyle
 from PyQt6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -123,15 +124,16 @@ class MainWindow(QMainWindow):
         style_manager.apply_style(self._nav_list, "navigation")
         
         nav_items = [
-            ("AI 模型配置", 0),
-            ("登录接口配置", 1),
-            ("单接口测试用例", 2),
-            ("单接口测试脚本", 3),
+            ("AI 模型配置", 0, QStyle.StandardPixmap.SP_ComputerIcon),
+            ("登录接口配置", 1, QStyle.StandardPixmap.SP_DialogYesButton),
+            ("单接口测试用例", 2, QStyle.StandardPixmap.SP_FileDialogDetailedView),
+            ("单接口测试脚本", 3, QStyle.StandardPixmap.SP_FileDialogContentsView),
         ]
-        
-        for text, index in nav_items:
+
+        for text, index, icon_type in nav_items:
             item = QListWidgetItem(text)
             item.setData(Qt.ItemDataRole.UserRole, index)
+            item.setIcon(self.style().standardIcon(icon_type))
             self._nav_list.addItem(item)
         
         self._nav_list.setCurrentRow(0)
