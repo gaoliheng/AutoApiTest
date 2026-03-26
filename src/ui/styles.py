@@ -263,13 +263,25 @@ class StyleManager:
                     border-radius: 8px;
                     gridline-color: #f5f6fa;
                     font-size: 13px;
+                    outline: none;
                 }
                 QTableWidget::item {
                     padding: 8px;
+                    border: none;
+                    outline: none;
                 }
                 QTableWidget::item:selected {
                     background-color: #e3f2fd;
                     color: #424242;
+                    border: none;
+                    outline: none;
+                }
+                QTableWidget::item:focus {
+                    border: none;
+                    outline: none;
+                }
+                QTableWidget:focus {
+                    outline: none;
                 }
                 QHeaderView::section {
                     background-color: #f5f6fa;
@@ -287,17 +299,31 @@ class StyleManager:
                     border-radius: 8px;
                     padding: 5px;
                     font-size: 13px;
+                    outline: none;
                 }
                 QListWidget::item {
                     padding: 10px;
                     border-radius: 4px;
+                    border: none;
+                    outline: none;
                 }
                 QListWidget::item:selected {
                     background-color: #e3f2fd;
                     color: #424242;
+                    border: none;
+                    outline: none;
+                }
+                QListWidget::item:focus {
+                    border: none;
+                    outline: none;
                 }
                 QListWidget::item:hover:!selected {
                     background-color: #f5f6fa;
+                    border: none;
+                    outline: none;
+                }
+                QListWidget:focus {
+                    outline: none;
                 }
             """,
             "group_box": """
