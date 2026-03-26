@@ -366,10 +366,8 @@ class TestCasePage(BasePage):
         self._main_bar.setObjectName("main_bar")
         self._main_bar.setStyleSheet("""
             QWidget {
-                background-color: #fafafa;
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                padding: 12px 15px;
+                background-color: transparent;
+                border: none;
             }
         """)
         main_layout = QHBoxLayout(self._main_bar)
@@ -433,8 +431,20 @@ class TestCasePage(BasePage):
                 background-color: #ffffff;
                 border: 1px solid #e0e0e0;
                 border-radius: 6px;
-                padding: 8px 10px;
+                padding: 6px 10px;
                 font-size: 13px;
+                color: #424242;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 24px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                selection-background-color: #e3f2fd;
+                selection-color: #424242;
             }
         """)
         generate_layout.addWidget(self._model_combo)
