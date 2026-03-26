@@ -28,6 +28,8 @@ from PyQt6.QtWidgets import (
     QApplication,
     QInputDialog,
     QDialogButtonBox,
+    QScrollArea,
+    QFrame,
 )
 
 from models.ai_model import AIModel
@@ -37,7 +39,9 @@ from core.export_service import ExportService, ExportFormat
 from ui.styles import style_manager
 from ui.pages.base_page import BasePage
 from ui.dialogs.test_case_history_dialog import TestCaseHistoryDialog
+from ui.dialogs.dimension_config_dialog import DimensionConfigDialog
 from utils.logger import get_logger
+from utils.config import config
 
 _logger = get_logger("ui.test_case_page")
 
@@ -125,21 +129,23 @@ class GenerateThread(QThread):
     progress = pyqtSignal(str)
     finished = pyqtSignal(list, str, str, str)
     error = pyqtSignal(str)
-    
+
     def __init__(
         self,
         ai_model: AIModel,
         doc_content: str,
+        dimensions: list[dict],
         parent: Optional[QWidget] = None
     ) -> None:
         super().__init__(parent)
         self._ai_model = ai_model
         self._doc_content = doc_content
-    
+        self._dimensions = dimensions
+
     def run(self) -> None:
         try:
             self.progress.emit("正在初始化 AI 模型...")
-            
+
             config = AIModelConfig(
                 name=self._ai_model.name,
                 api_base_url=self._ai_model.api_base,
@@ -147,34 +153,45 @@ class GenerateThread(QThread):
                 model_name=self._ai_model.model_name,
                 timeout=300.0,
             )
-            
+
             client = AIClient(config)
-            
+
             self.progress.emit("正在分析接口文档...")
-            
-            system_prompt = """你是一个专业的API测试工程师。你的任务是根据用户提供的API接口文档生成测试用例。
+
+            dimension_text = self._build_dimension_text()
+
+            system_prompt = f"""你是一个专业的API测试工程师。你的任务是根据用户提供的API接口文档生成测试用例。
 
 请按照以下JSON格式输出测试用例列表：
 ```json
-{
+{{
     "base_url": "http://api.example.com:8080",
     "api_path": "/api/v1/users",
-    "common_headers": {
+    "common_headers": {{
         "Authorization": "Bearer your_token_here",
         "Content-Type": "application/json"
-    },
+    }},
     "test_cases": [
-        {
+        {{
             "name": "测试用例名称",
             "method": "GET/POST/PUT/DELETE",
             "params": "page=1&size=10 或 JSON格式",
             "body": "请求体JSON字符串",
             "expected_status": 200,
             "assertions": "断言描述，如：响应状态码为200，data.list长度大于0，msg等于成功"
-        }
+        }}
     ]
-}
+}}
 ```
+
+【重要】本次需要生成的测试维度：
+{dimension_text}
+
+【强制要求】必须严格按照上述维度生成测试用例：
+1. 为每个启用的维度生成至少 1-2 个测试用例
+2. 每个测试用例的 name 或 description 必须明确说明它属于哪个维度
+3. 例如：如果启用了"异常场景测试"，必须生成参数缺失、类型错误等异常测试用例
+4. 不要生成与指定维度无关的测试用例
 
 请确保：
 1. 从文档中提取 base_url（包含协议、IP、端口），如果没有找到则设为空字符串
@@ -185,34 +202,50 @@ class GenerateThread(QThread):
    - 其他必要的请求头
    如果文档中提到需要认证但未给出具体token，Authorization 值使用占位符如 "Bearer your_token_here"
    如果文档中对请求头的描述是自然语言（如"需要在Header中传入token"），也可以提取为JSON格式
-   如果没有找到任何请求头，则设为空对象 {}
-4. 为该接口生成多个测试场景（正常、异常、边界值等）
+   如果没有找到任何请求头，则设为空对象 {{}}
 5. params 和 body 使用自然语言或JSON格式描述
 6. assertions 使用自然语言描述断言条件
 7. 只输出JSON，不要包含其他说明文字"""
-            
+
             user_message = f"以下是API接口文档：\n\n{self._doc_content}\n\n请根据以上接口文档生成测试用例。"
-            
+
             messages = [
                 ChatMessage(role=MessageRole.SYSTEM, content=system_prompt),
                 ChatMessage(role=MessageRole.USER, content=user_message),
             ]
-            
+
             self.progress.emit("正在生成测试用例...")
-            
+
             response = client.chat(messages, temperature=0.7, max_tokens=16384)
-            
+
             content = response["choices"][0]["message"]["content"]
-            
+
             test_cases, base_url, api_path, common_headers = self._parse_response(content)
-            
+
             client.close()
-            
+
             self.progress.emit("测试用例生成完成!")
             self.finished.emit(test_cases, base_url, api_path, common_headers)
-            
+
         except Exception as e:
             self.error.emit(f"生成失败: {str(e)}")
+
+    def _build_dimension_text(self) -> str:
+        if not self._dimensions:
+            _logger.warning("维度配置为空，使用默认提示")
+            return "正常场景测试、异常场景测试"
+
+        lines = []
+        priority_markers = {"high": "⭐⭐⭐", "medium": "⭐⭐", "low": "⭐"}
+        for i, dim in enumerate(self._dimensions, 1):
+            name = dim.get("name", f"维度{i}")
+            desc = dim.get("description", "")
+            priority = dim.get("priority", "medium")
+            marker = priority_markers.get(priority, "⭐")
+            lines.append(f"{i}. {name}（{marker}）：{desc}")
+        result = "\n".join(lines)
+        _logger.debug(f"生成的维度配置文本: {result}")
+        return result
     
     def _parse_response(self, content: str) -> tuple[list[dict], str, str, str]:
         json_str = content
@@ -327,7 +360,7 @@ class TestCasePage(BasePage):
         self._generate_thread: Optional[GenerateThread] = None
         self._init_content()
         self._load_ai_models()
-    
+
     def _init_content(self) -> None:
         config_group = QGroupBox("接口配置")
         config_group.setStyleSheet("""
@@ -589,6 +622,24 @@ class TestCasePage(BasePage):
             }
         """)
         ai_layout.addWidget(self._history_btn)
+
+        # 测试维度配置按钮
+        self._dimension_config_btn = QPushButton("配置维度")
+        self._dimension_config_btn.clicked.connect(self._show_dimension_config)
+        self._dimension_config_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e8f5e9;
+                color: #388e3c;
+                border: 1px solid #a5d6a7;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+            }
+        """)
+        ai_layout.addWidget(self._dimension_config_btn)
 
         ai_layout.addStretch()
         second_bar.addWidget(ai_group)
@@ -993,28 +1044,30 @@ class TestCasePage(BasePage):
         if not doc_content:
             QMessageBox.warning(self, "提示", "请输入接口文档内容")
             return
-        
+
         set_api_doc(doc_content)
-        
+
         model_id = self._model_combo.currentData()
         if not model_id:
             QMessageBox.warning(self, "提示", "请选择 AI 模型")
             return
-        
+
         ai_model = AIModel.get_by_id(model_id)
         if not ai_model:
             QMessageBox.warning(self, "提示", "AI 模型不存在")
             return
-        
-        _logger.info(f"开始生成测试用例: model={ai_model.name}, doc_length={len(doc_content)}")
-        
+
+        enabled_dimensions = config.get_enabled_dimensions()
+        _logger.info(f"开始生成测试用例: model={ai_model.name}, doc_length={len(doc_content)}, dimensions_count={len(enabled_dimensions)}, dimensions={enabled_dimensions}")
+
         self._generate_btn.setEnabled(False)
         self._progress_bar.setVisible(True)
         self._status_label.setText("正在生成测试用例...")
-        
+
         self._generate_thread = GenerateThread(
             ai_model=ai_model,
             doc_content=doc_content,
+            dimensions=enabled_dimensions,
         )
         self._generate_thread.progress.connect(self._on_progress)
         self._generate_thread.finished.connect(self._on_finished)
@@ -1514,6 +1567,11 @@ class TestCasePage(BasePage):
             on_load_history=self._load_history_to_table,
             parent=self
         )
+        dialog.exec()
+
+    def _show_dimension_config(self) -> None:
+        """显示测试维度配置对话框"""
+        dialog = DimensionConfigDialog(parent=self)
         dialog.exec()
     
     def _load_history_to_table(self, history: TestCaseHistory) -> None:

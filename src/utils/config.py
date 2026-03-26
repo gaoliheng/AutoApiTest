@@ -1,8 +1,41 @@
+import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 import yaml
 import sys
 import os
+
+
+DEFAULT_TEST_DIMENSIONS = [
+    {
+        "id": "happy_path",
+        "name": "正常场景测试",
+        "description": "测试接口在正常输入和正确参数情况下的行为",
+        "enabled": True,
+        "priority": "high"
+    },
+    {
+        "id": "boundary",
+        "name": "边界值测试",
+        "description": "测试参数在边界值情况下的行为（最大值、最小值、空值等）",
+        "enabled": True,
+        "priority": "medium"
+    },
+    {
+        "id": "error_case",
+        "name": "异常场景测试",
+        "description": "测试参数缺失、类型错误、权限问题等异常情况",
+        "enabled": True,
+        "priority": "high"
+    },
+    {
+        "id": "performance",
+        "name": "性能相关测试",
+        "description": "测试大数据量或高并发场景",
+        "enabled": False,
+        "priority": "low"
+    },
+]
 
 
 class Config:
@@ -82,6 +115,22 @@ class Config:
     
     def set(self, key: str, value: object) -> None:
         self._settings[key] = value
+        self.save_config()
+
+    @property
+    def test_dimensions(self) -> list[dict[str, Any]]:
+        return self._settings.get("test_dimensions", DEFAULT_TEST_DIMENSIONS.copy())
+
+    @test_dimensions.setter
+    def test_dimensions(self, value: list[dict[str, Any]]) -> None:
+        self._settings["test_dimensions"] = value
+        self.save_config()
+
+    def get_enabled_dimensions(self) -> list[dict[str, Any]]:
+        return [d for d in self.test_dimensions if d.get("enabled", False)]
+
+    def reset_test_dimensions(self) -> None:
+        self._settings["test_dimensions"] = DEFAULT_TEST_DIMENSIONS.copy()
         self.save_config()
 
 
