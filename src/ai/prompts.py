@@ -91,14 +91,29 @@ class TestScript:
 
 
 class TestCasePrompt:
-    TEST_CASE_SYSTEM_PROMPT = """你是一个专业的 API 测试工程师，擅长分析接口文档并生成全面的测试用例。
+    @staticmethod
+    def build_system_prompt(dimensions: list[dict[str, Any]]) -> str:
+        if not dimensions:
+            dimensions = [
+                {"name": "正常场景测试", "description": "测试接口在正常输入和正确参数情况下的行为"},
+                {"name": "异常场景测试", "description": "测试参数缺失、类型错误、权限问题等异常情况"},
+            ]
+
+        dimension_lines = []
+        for i, dim in enumerate(dimensions, 1):
+            name = dim.get("name", f"维度{i}")
+            desc = dim.get("description", "")
+            priority = dim.get("priority", "medium")
+            priority_marker = {"high": "⭐⭐⭐", "medium": "⭐⭐", "low": "⭐"}.get(priority, "⭐")
+            dimension_lines.append(f"{i}. {name}（优先级: {priority_marker}）：{desc}")
+
+        dimensions_text = "\n".join(dimension_lines)
+
+        return f"""你是一个专业的 API 测试工程师，擅长分析接口文档并生成全面的测试用例。
 你需要根据用户提供的接口文档，生成结构化的测试用例，确保覆盖各种测试场景。
 
-测试用例应该包括：
-1. 正常场景测试（Happy Path）
-2. 边界值测试
-3. 异常场景测试（如参数缺失、类型错误、权限问题等）
-4. 性能相关测试（如大数据量请求）
+【重要】本次需要生成的测试维度包括：
+{dimensions_text}
 
 输出格式要求：必须输出有效的 JSON 数组，每个测试用例包含以下字段：
 - id: 测试用例唯一标识（格式：TC_XXX_001）
@@ -114,7 +129,9 @@ class TestCasePrompt:
 - expected_response: 预期响应体（可选）
 - assertions: 断言列表，每个断言包含 type（断言类型）、path（JSONPath）、expected（期望值）
 - priority: 优先级（high/medium/low）
-- tags: 标签列表"""
+- tags: 标签列表
+
+请确保生成的测试用例严格遵循指定的测试维度，不要遗漏任何启用的维度。"""
 
     @classmethod
     def build_prompt(
@@ -153,11 +170,15 @@ class TestCasePrompt:
         api_document: str,
         document_format: DocumentFormat = DocumentFormat.JSON,
         additional_requirements: Optional[str] = None,
+        dimensions: Optional[list[dict[str, Any]]] = None,
     ) -> list[dict[str, str]]:
         from .client import ChatMessage, MessageRole
 
+        if dimensions is None:
+            dimensions = []
+
         return [
-            {"role": "system", "content": cls.TEST_CASE_SYSTEM_PROMPT},
+            {"role": "system", "content": cls.build_system_prompt(dimensions)},
             {
                 "role": "user",
                 "content": cls.build_prompt(
