@@ -362,8 +362,9 @@ class TestCasePage(BasePage):
         self._load_ai_models()
 
     def _init_content(self) -> None:
-        main_bar = QWidget()
-        main_bar.setStyleSheet("""
+        self._main_bar = QWidget()
+        self._main_bar.setObjectName("main_bar")
+        self._main_bar.setStyleSheet("""
             QWidget {
                 background-color: #fafafa;
                 border: 1px solid #e0e0e0;
@@ -371,7 +372,7 @@ class TestCasePage(BasePage):
                 padding: 12px 15px;
             }
         """)
-        main_layout = QHBoxLayout(main_bar)
+        main_layout = QHBoxLayout(self._main_bar)
         main_layout.setSpacing(12)
         main_layout.setContentsMargins(15, 12, 15, 12)
 
@@ -521,7 +522,7 @@ class TestCasePage(BasePage):
         main_layout.addWidget(manage_section)
         main_layout.addStretch()
 
-        self.add_widget(main_bar)
+        self.add_widget(self._main_bar)
 
         self._base_url_edit = QLineEdit()
         self._base_url_edit.setVisible(False)
@@ -532,6 +533,56 @@ class TestCasePage(BasePage):
         self._api_path_edit.setVisible(False)
         self._api_path_edit.textChanged.connect(self._save_config)
         self.add_widget(self._api_path_edit)
+
+        self._api_info_bar = QWidget()
+        self._api_info_bar.setVisible(False)
+        self._api_info_bar.setStyleSheet("""
+            QWidget {
+                background-color: #e3f2fd;
+                border: 1px solid #90caf9;
+                border-radius: 6px;
+                padding: 8px 12px;
+            }
+        """)
+        api_info_layout = QHBoxLayout(self._api_info_bar)
+        api_info_layout.setContentsMargins(10, 5, 10, 5)
+        api_info_layout.setSpacing(10)
+
+        base_url_label = QLabel("Base URL:")
+        base_url_label.setStyleSheet("font-size: 12px; color: #1565c0; font-weight: bold;")
+        api_info_layout.addWidget(base_url_label)
+
+        self._base_url_display = QLineEdit()
+        self._base_url_display.setStyleSheet("""
+            QLineEdit {
+                background-color: #ffffff;
+                border: 1px solid #90caf9;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 12px;
+            }
+        """)
+        self._base_url_display.textChanged.connect(self._on_base_url_changed)
+        api_info_layout.addWidget(self._base_url_display, 1)
+
+        api_path_label = QLabel("路径:")
+        api_path_label.setStyleSheet("font-size: 12px; color: #1565c0; font-weight: bold;")
+        api_info_layout.addWidget(api_path_label)
+
+        self._api_path_display = QLineEdit()
+        self._api_path_display.setStyleSheet("""
+            QLineEdit {
+                background-color: #ffffff;
+                border: 1px solid #90caf9;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 12px;
+            }
+        """)
+        self._api_path_display.textChanged.connect(self._on_api_path_changed)
+        api_info_layout.addWidget(self._api_path_display, 1)
+
+        self.add_widget(self._api_info_bar)
 
         progress_layout = QHBoxLayout()
         progress_layout.setContentsMargins(0, 8, 0, 0)
@@ -780,6 +831,15 @@ class TestCasePage(BasePage):
         self._doc_input.clear()
         self._update_doc_status()
 
+    def _show_config_panel(self) -> None:
+        self._api_info_bar.setVisible(False)
+
+    def _on_base_url_changed(self, text: str) -> None:
+        self._base_url_edit.setText(text)
+
+    def _on_api_path_changed(self, text: str) -> None:
+        self._api_path_edit.setText(text)
+
     def _on_doc_changed(self) -> None:
         self._update_doc_status()
 
@@ -992,6 +1052,9 @@ class TestCasePage(BasePage):
         if base_url or api_path:
             self._base_url_edit.setText(base_url)
             self._api_path_edit.setText(api_path)
+            self._base_url_display.setText(base_url)
+            self._api_path_display.setText(api_path)
+            self._api_info_bar.setVisible(True)
 
         self._load_cases_to_table(test_cases)
         self._save_config()
@@ -1479,14 +1542,17 @@ class TestCasePage(BasePage):
     
     def _load_history_to_table(self, history: TestCaseHistory) -> None:
         """将历史记录加载到表格"""
-        # 清空当前表格
         self._table.setRowCount(0)
-        
-        # 恢复接口配置
-        if history.base_url:
-            self._base_url_edit.setText(history.base_url)
-        if history.api_path:
-            self._api_path_edit.setText(history.api_path)
+
+        if history.base_url or history.api_path:
+            self._base_url_edit.setText(history.base_url or "")
+            self._api_path_edit.setText(history.api_path or "")
+            self._base_url_display.setText(history.base_url or "")
+            self._api_path_display.setText(history.api_path or "")
+            self._api_info_bar.setVisible(True)
+        else:
+            self._api_info_bar.setVisible(False)
+
         if history.common_headers:
             set_common_headers(history.common_headers)
         if history.api_document:

@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ui.styles import style_manager
-from utils.config import config, DEFAULT_TEST_DIMENSIONS
+from models.dimension_config import DimensionConfig
 from utils.logger import get_logger
 
 _logger = get_logger("ui.dimension_config_dialog")
@@ -172,13 +172,13 @@ class DimensionConfigDialog(QDialog):
                 item.widget().deleteLater()
         self._dimension_widgets.clear()
 
-        dimensions = config.test_dimensions
+        dimensions = DimensionConfig.get_all()
         for dim in dimensions:
-            self._add_dimension_widget(dim)
+            self._add_dimension_widget(dim.to_dict())
 
     def _add_dimension_widget(self, dim_data: dict) -> None:
-        dim_id = dim_data.get("id", str(id(dim_data)))
-        is_system = dim_id in ["happy_path", "boundary", "error_case", "performance"]
+        dim_id = dim_data.get("dimension_id", dim_data.get("id", str(id(dim_data))))
+        is_system = dim_data.get("is_system", dim_id in ["happy_path", "boundary", "error_case", "performance"])
 
         row_widget = QWidget()
         row_widget.setStyleSheet("""
@@ -269,19 +269,20 @@ class DimensionConfigDialog(QDialog):
         self._save_config()
 
     def _save_config(self) -> None:
-        dimensions = []
         for dim_id, widgets in self._dimension_widgets.items():
-            data = widgets["data"].copy()
-            data["enabled"] = widgets["enabled_cb"].isChecked()
-            data["priority"] = widgets["priority_combo"].currentText()
-            dimensions.append(data)
-        config.test_dimensions = dimensions
+            config = DimensionConfig.get_by_dimension_id(dim_id)
+            if config:
+                config.enabled = widgets["enabled_cb"].isChecked()
+                config.priority = widgets["priority_combo"].currentText()
+                config.save()
 
     def _delete_dimension(self, widget: QWidget, dim_id: str) -> None:
+        config = DimensionConfig.get_by_dimension_id(dim_id)
+        if config:
+            config.delete()
         if dim_id in self._dimension_widgets:
             del self._dimension_widgets[dim_id]
         widget.deleteLater()
-        self._save_config()
 
     def _add_custom_dimension(self) -> None:
         name, ok = QInputDialog.getText(self, "添加自定义维度", "请输入维度名称：")
@@ -292,16 +293,18 @@ class DimensionConfigDialog(QDialog):
         if not ok:
             return
 
-        custom_dim = {
-            "id": f"custom_{len(self._dimension_widgets) + 1}",
-            "name": name.strip(),
-            "description": desc.strip() if desc.strip() else "用户自定义测试维度",
-            "enabled": True,
-            "priority": "medium",
-        }
+        custom_dim = DimensionConfig(
+            dimension_id=f"custom_{len(self._dimension_widgets) + 1}",
+            name=name.strip(),
+            description=desc.strip() if desc.strip() else "用户自定义测试维度",
+            enabled=True,
+            priority="medium",
+            is_system=False,
+            sort_order=len(self._dimension_widgets) + 10,
+        )
+        custom_dim.save()
 
-        self._add_dimension_widget(custom_dim)
-        self._save_config()
+        self._add_dimension_widget(custom_dim.to_dict())
 
     def _reset_config(self) -> None:
         reply = QMessageBox.question(
@@ -311,7 +314,7 @@ class DimensionConfigDialog(QDialog):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
-            config.reset_test_dimensions()
+            DimensionConfig.reset_to_defaults()
             self._load_config()
 
     def _on_ok(self) -> None:
