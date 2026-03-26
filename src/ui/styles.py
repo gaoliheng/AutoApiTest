@@ -86,10 +86,11 @@ class StyleManager:
             "navigation": """
                 QListWidget {
                     background-color: #ffffff;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
+                    border: none;
+                    border-radius: 0;
                     padding: 5px;
                     font-size: 14px;
+                    outline: none;
                 }
                 QListWidget::item {
                     padding: 12px 15px;
@@ -104,8 +105,28 @@ class StyleManager:
                     border: none;
                     outline: none;
                 }
+                QListWidget::item:selected:!active {
+                    background-color: #2196f3;
+                    color: white;
+                    border: none;
+                    outline: none;
+                }
+                QListWidget::item:selected:active {
+                    background-color: #2196f3;
+                    color: white;
+                    border: none;
+                    outline: none;
+                }
+                QListWidget::item:focus {
+                    border: none;
+                    outline: none;
+                }
                 QListWidget::item:hover:!selected {
                     background-color: #e3f2fd;
+                    border: none;
+                    outline: none;
+                }
+                QListWidget:focus {
                     border: none;
                     outline: none;
                 }

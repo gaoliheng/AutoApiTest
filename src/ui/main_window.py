@@ -85,6 +85,7 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(0)
         
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setStyleSheet("QSplitter { border: none; }")
         main_layout.addWidget(splitter)
         
         nav_widget = self._create_navigation_widget()
@@ -100,9 +101,11 @@ class MainWindow(QMainWindow):
     def _create_navigation_widget(self) -> QWidget:
         nav_widget = QWidget()
         nav_widget.setFixedWidth(180)
+        nav_widget.setStyleSheet("QWidget { border: none; outline: none; }")
         nav_layout = QVBoxLayout(nav_widget)
         nav_layout.setContentsMargins(10, 10, 10, 10)
-        
+        nav_layout.setSpacing(0)
+
         nav_title = QLabel("功能导航")
         nav_title.setStyleSheet("""
             QLabel {
@@ -113,8 +116,10 @@ class MainWindow(QMainWindow):
             }
         """)
         nav_layout.addWidget(nav_title)
-        
+
         self._nav_list = QListWidget()
+        self._nav_list.setFrameStyle(0)  # 移除边框
+        self._nav_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # 移除焦点
         style_manager.apply_style(self._nav_list, "navigation")
         
         nav_items = [
