@@ -2,7 +2,7 @@ from typing import Optional
 from pathlib import Path
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QKeySequence, QIcon, QPixmap
+from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import QStyle
 from PyQt6.QtWidgets import (
     QMainWindow,
@@ -10,13 +10,13 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QSplitter,
-    QMenuBar,
     QStatusBar,
     QTabWidget,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
     QLabel,
+    QPushButton,
 )
 
 from ui.styles import style_manager
@@ -33,7 +33,6 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self._init_window()
-        self._init_menubar()
         self._init_statusbar()
         self._init_central_widget()
         self._apply_styles()
@@ -50,22 +49,6 @@ class MainWindow(QMainWindow):
             if not pixmap.isNull():
                 icon = QIcon(pixmap)
                 self.setWindowIcon(icon)
-    
-    def _init_menubar(self) -> None:
-        menubar = self.menuBar()
-        
-        file_menu = menubar.addMenu("文件(&F)")
-        
-        exit_action = QAction("退出", self)
-        exit_action.setShortcut(QKeySequence("Ctrl+Q"))
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
-        
-        help_menu = menubar.addMenu("帮助(&H)")
-        
-        about_action = QAction("关于", self)
-        about_action.triggered.connect(self._on_about)
-        help_menu.addAction(about_action)
     
     def _init_statusbar(self) -> None:
         statusbar = QStatusBar()
@@ -86,7 +69,20 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(0)
         
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setStyleSheet("QSplitter { border: none; }")
+        splitter.setStyleSheet("""
+            QSplitter {
+                border: none;
+            }
+            QSplitter::handle {
+                background-color: transparent;
+                border: none;
+            }
+            QSplitter::handle:horizontal {
+                width: 4px;
+                background-color: transparent;
+                border: none;
+            }
+        """)
         main_layout.addWidget(splitter)
         
         nav_widget = self._create_navigation_widget()
@@ -102,27 +98,24 @@ class MainWindow(QMainWindow):
     def _create_navigation_widget(self) -> QWidget:
         nav_widget = QWidget()
         nav_widget.setFixedWidth(180)
-        nav_widget.setStyleSheet("QWidget { border: none; outline: none; }")
-        nav_layout = QVBoxLayout(nav_widget)
-        nav_layout.setContentsMargins(10, 10, 10, 10)
-        nav_layout.setSpacing(0)
-
-        nav_title = QLabel("功能导航")
-        nav_title.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                color: #424242;
-                padding: 10px 5px;
+        nav_widget.setStyleSheet("""
+            QWidget {
+                background-color: #f8f9fa;
+                border: none;
+                outline: none;
             }
         """)
-        nav_layout.addWidget(nav_title)
+        nav_layout = QVBoxLayout(nav_widget)
+        nav_layout.setContentsMargins(8, 15, 8, 10)
+        nav_layout.setSpacing(0)
 
         self._nav_list = QListWidget()
         self._nav_list.setFrameStyle(0)  # 移除边框
         self._nav_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # 移除焦点
+        self._nav_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # 隐藏滚动条
+        self._nav_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  # 隐藏水平滚动条
         style_manager.apply_style(self._nav_list, "navigation")
-        
+
         nav_items = [
             ("AI 模型配置", 0, QStyle.StandardPixmap.SP_ComputerIcon),
             ("登录接口配置", 1, QStyle.StandardPixmap.SP_DialogYesButton),
@@ -135,12 +128,34 @@ class MainWindow(QMainWindow):
             item.setData(Qt.ItemDataRole.UserRole, index)
             item.setIcon(self.style().standardIcon(icon_type))
             self._nav_list.addItem(item)
-        
+
         self._nav_list.setCurrentRow(0)
         self._nav_list.currentRowChanged.connect(self._on_nav_changed)
-        
+
         nav_layout.addWidget(self._nav_list)
-        
+
+        # 底部关于按钮
+        nav_layout.addStretch()
+        about_btn = QPushButton("关于")
+        about_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxInformation))
+        about_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #757575;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 12px;
+                font-size: 13px;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #f5f5f5;
+                color: #424242;
+            }
+        """)
+        about_btn.clicked.connect(self._on_about)
+        nav_layout.addWidget(about_btn)
+
         return nav_widget
     
     def _create_content_widget(self) -> QWidget:

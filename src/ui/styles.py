@@ -85,15 +85,15 @@ class StyleManager:
             """,
             "navigation": """
                 QListWidget {
-                    background-color: #ffffff;
+                    background-color: transparent;
                     border: none;
                     border-radius: 0;
-                    padding: 5px;
+                    padding: 0;
                     font-size: 14px;
                     outline: none;
                 }
                 QListWidget::item {
-                    padding: 12px 15px;
+                    padding: 12px 10px;
                     border-radius: 6px;
                     margin: 2px 0;
                     border: none;
