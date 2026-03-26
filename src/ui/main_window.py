@@ -124,9 +124,9 @@ class MainWindow(QMainWindow):
         
         nav_items = [
             ("AI 模型配置", 0),
-            ("登录配置", 1),
-            ("测试用例", 2),
-            ("生成测试脚本", 3),
+            ("登录接口配置", 1),
+            ("单接口测试用例", 2),
+            ("单接口测试脚本", 3),
         ]
         
         for text, index in nav_items:
@@ -158,9 +158,9 @@ class MainWindow(QMainWindow):
         self._test_script_page = TestScriptPage()
         
         self._tab_widget.addTab(self._ai_model_page, "AI 模型配置")
-        self._tab_widget.addTab(self._auth_config_page, "登录配置")
-        self._tab_widget.addTab(self._test_case_page, "测试用例")
-        self._tab_widget.addTab(self._test_script_page, "生成测试脚本")
+        self._tab_widget.addTab(self._auth_config_page, "登录接口配置")
+        self._tab_widget.addTab(self._test_case_page, "单接口测试用例")
+        self._tab_widget.addTab(self._test_script_page, "单接口测试脚本")
         
         self._tab_widget.tabBar().hide()
         
