@@ -62,8 +62,8 @@ jobs:
 
       - name: Create macOS spec file
         run: |
-          cat > build_scripts/AutoApiTest-mac.spec << 'SPECEOF'
-# -*- mode: python ; coding: utf-8 -*-
+          python3 << 'PYEOF'
+          spec_content = '''# -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
 
@@ -141,7 +141,11 @@ app = BUNDLE(
         'NSHighResolutionCapable': True,
     },
 )
-SPECEOF
+'''
+          with open('build_scripts/AutoApiTest-mac.spec', 'w') as f:
+              f.write(spec_content)
+          print('Spec file created')
+          PYEOF
 
       - name: Build macOS app
         run: |
