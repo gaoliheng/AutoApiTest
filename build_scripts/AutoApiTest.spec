@@ -12,6 +12,7 @@ a = Analysis(
     ],
     hiddenimports=[
         'sqlite3',
+        'openpyxl',
         'PyQt6.QtCore',
         'PyQt6.QtGui',
         'PyQt6.QtWidgets',
