@@ -433,108 +433,438 @@ class TestScriptPage(BasePage):
         self._load_ai_models()
     
     def _init_content(self) -> None:
-        info_group = QGroupBox("测试配置信息")
+        # 流程说明区域
+        flow_tips = QWidget()
+        flow_tips.setStyleSheet("""
+            QWidget {
+                background-color: #f8f9fa;
+                border: 1px solid #e9ecef;
+                border-radius: 8px;
+            }
+        """)
+        flow_layout = QHBoxLayout(flow_tips)
+        flow_layout.setSpacing(20)
+        flow_layout.setContentsMargins(15, 10, 15, 10)
+
+        # 步骤1: 确认测试用例
+        step1 = QLabel("① 确认测试用例")
+        step1.setStyleSheet("font-size: 13px; color: #2e7d32; font-weight: bold;")
+        step1.setToolTip("确保已在测试用例页面生成或选择测试用例")
+        flow_layout.addWidget(step1)
+
+        arrow1 = QLabel("→")
+        arrow1.setStyleSheet("color: #adb5bd; font-size: 14px;")
+        flow_layout.addWidget(arrow1)
+
+        # 步骤2: 选择AI模型
+        step2 = QLabel("② 选择AI模型")
+        step2.setStyleSheet("font-size: 13px; color: #7b1fa2; font-weight: bold;")
+        step2.setToolTip("选择用于生成测试脚本的AI模型")
+        flow_layout.addWidget(step2)
+
+        arrow2 = QLabel("→")
+        arrow2.setStyleSheet("color: #adb5bd; font-size: 14px;")
+        flow_layout.addWidget(arrow2)
+
+        # 步骤3: 生成测试脚本
+        step3 = QLabel("③ 生成测试脚本")
+        step3.setStyleSheet("font-size: 13px; color: #1565c0; font-weight: bold;")
+        step3.setToolTip("AI将根据测试用例自动生成pytest测试脚本")
+        flow_layout.addWidget(step3)
+
+        arrow3 = QLabel("→")
+        arrow3.setStyleSheet("color: #adb5bd; font-size: 14px;")
+        flow_layout.addWidget(arrow3)
+
+        # 步骤4: 保存本地脚本执行
+        step4 = QLabel("④ 保存本地脚本执行")
+        step4.setStyleSheet("font-size: 13px; color: #e65100; font-weight: bold;")
+        step4.setToolTip("保存脚本到本地并执行测试")
+        flow_layout.addWidget(step4)
+
+        flow_layout.addStretch()
+
+        # 添加提示标签
+        tip_label = QLabel("💡 提示: 确保测试用例页面已配置好接口信息和用例")
+        tip_label.setStyleSheet("font-size: 12px; color: #6c757d;")
+        flow_layout.addWidget(tip_label)
+
+        self.add_widget(flow_tips)
+
+        # 测试配置信息区域
+        info_group = QGroupBox("📋 测试配置信息")
+        info_group.setStyleSheet("""
+            QGroupBox {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 8px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 10px;
+                color: #1565c0;
+            }
+        """)
         info_layout = QVBoxLayout(info_group)
+        info_layout.setSpacing(12)
+        info_layout.setContentsMargins(15, 15, 15, 15)
         
         info_row = QHBoxLayout()
         self._info_label = QLabel("当前共有 0 条测试用例")
-        self._info_label.setStyleSheet("font-size: 14px; color: #333;")
+        self._info_label.setStyleSheet("font-size: 14px; color: #424242; font-weight: 500;")
         info_row.addWidget(self._info_label)
         info_row.addStretch()
+        
+        self._view_cases_btn = QPushButton("查看测试用例")
+        self._view_cases_btn.clicked.connect(self._go_to_test_cases)
+        self._view_cases_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e3f2fd;
+                color: #1565c0;
+                border: 1px solid #90caf9;
+                border-radius: 6px;
+                padding: 6px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+            }
+        """)
+        info_row.addWidget(self._view_cases_btn)
         info_layout.addLayout(info_row)
         
         self._config_label = QLabel("")
-        self._config_label.setStyleSheet("font-size: 12px; color: #666;")
+        self._config_label.setStyleSheet("""
+            font-size: 12px; 
+            color: #616161; 
+            background-color: #f5f5f5;
+            padding: 8px 12px;
+            border-radius: 4px;
+        """)
+        self._config_label.setWordWrap(True)
         info_layout.addWidget(self._config_label)
         
-        info_btn_layout = QHBoxLayout()
-        self._view_cases_btn = QPushButton("查看测试用例")
-        self._view_cases_btn.clicked.connect(self._go_to_test_cases)
-        style_manager.apply_style(self._view_cases_btn, "button_secondary")
-        info_btn_layout.addWidget(self._view_cases_btn)
-        info_btn_layout.addStretch()
-        info_layout.addLayout(info_btn_layout)
-        
-        style_manager.apply_style(info_group, "group_box")
         self.add_widget(info_group)
         
-        model_group = QGroupBox("AI 模型选择")
+        # AI模型选择区域
+        model_group = QGroupBox("🤖 AI 模型选择")
+        model_group.setStyleSheet("""
+            QGroupBox {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 8px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 10px;
+                color: #7b1fa2;
+            }
+        """)
         model_layout = QHBoxLayout(model_group)
+        model_layout.setSpacing(12)
+        model_layout.setContentsMargins(15, 15, 15, 15)
+        
+        model_icon = QLabel("🎯")
+        model_icon.setStyleSheet("font-size: 20px;")
+        model_layout.addWidget(model_icon)
+        
+        model_label = QLabel("选择模型:")
+        model_label.setStyleSheet("font-size: 13px; color: #424242;")
+        model_layout.addWidget(model_label)
         
         self._model_combo = QComboBox()
         self._model_combo.setPlaceholderText("请选择 AI 模型")
-        style_manager.apply_style(self._model_combo, "combobox")
+        self._model_combo.setMinimumWidth(200)
+        self._model_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-size: 13px;
+                color: #424242;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 24px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                selection-background-color: #f3e5f5;
+                selection-color: #424242;
+            }
+        """)
         model_layout.addWidget(self._model_combo)
         
-        self._generate_btn = QPushButton("生成测试脚本")
+        model_layout.addStretch()
+        
+        self._generate_btn = QPushButton("✨ 生成测试脚本")
         self._generate_btn.clicked.connect(self._generate_script)
-        style_manager.apply_style(self._generate_btn, "button_primary")
+        self._generate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #7b1fa2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 24px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #9c27b0;
+            }
+            QPushButton:disabled {
+                background-color: #e0e0e0;
+                color: #9e9e9e;
+            }
+        """)
         model_layout.addWidget(self._generate_btn)
         
-        style_manager.apply_style(model_group, "group_box")
         self.add_widget(model_group)
+        
+        # 进度条和状态
+        progress_widget = QWidget()
+        progress_layout = QVBoxLayout(progress_widget)
+        progress_layout.setContentsMargins(0, 8, 0, 0)
+        progress_layout.setSpacing(8)
         
         self._progress_bar = QProgressBar()
         self._progress_bar.setRange(0, 0)
         self._progress_bar.setVisible(False)
-        style_manager.apply_style(self._progress_bar, "progress_bar")
-        self.add_widget(self._progress_bar)
+        self._progress_bar.setFixedHeight(20)
+        self._progress_bar.setStyleSheet("""
+            QProgressBar {
+                background-color: #f3e5f5;
+                border: none;
+                border-radius: 10px;
+                text-align: center;
+                font-size: 12px;
+                color: #7b1fa2;
+            }
+            QProgressBar::chunk {
+                background-color: #9c27b0;
+                border-radius: 10px;
+            }
+        """)
+        progress_layout.addWidget(self._progress_bar)
         
         self._status_label = QLabel("")
-        self._status_label.setStyleSheet("color: #757575;")
-        self.add_widget(self._status_label)
+        self._status_label.setStyleSheet("color: #757575; font-size: 13px; padding-left: 5px;")
+        self._status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        progress_layout.addWidget(self._status_label)
         
-        preview_group = QGroupBox("生成的测试脚本")
+        self.add_widget(progress_widget)
+        
+        # 代码预览区域
+        preview_group = QGroupBox("📝 生成的测试脚本")
+        preview_group.setStyleSheet("""
+            QGroupBox {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 8px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 10px;
+                color: #1565c0;
+            }
+        """)
         preview_layout = QVBoxLayout(preview_group)
+        preview_layout.setSpacing(12)
+        preview_layout.setContentsMargins(15, 15, 15, 15)
 
+        # 验证结果标签
         self._validation_label = QLabel("")
-        self._validation_label.setStyleSheet("font-size: 12px; padding: 5px; border-radius: 3px;")
+        self._validation_label.setStyleSheet("""
+            font-size: 13px; 
+            padding: 10px 15px; 
+            border-radius: 6px;
+            font-weight: 500;
+        """)
         self._validation_label.setVisible(False)
         preview_layout.addWidget(self._validation_label)
 
+        # 代码编辑器
         self._script_preview = QTextEdit()
         self._script_preview.setReadOnly(False)
-        self._script_preview.setPlaceholderText("生成的测试脚本将在此显示...")
-        self._script_preview.setFont(QFont("Consolas", 10))
+        self._script_preview.setPlaceholderText("生成的测试脚本将在此显示...\n\n点击「✨ 生成测试脚本」按钮开始生成")
+        self._script_preview.setFont(QFont("Consolas", 11))
         self._highlighter = PythonHighlighter(self._script_preview.document())
-        style_manager.apply_style(self._script_preview, "input")
-        preview_layout.addWidget(self._script_preview)
+        self._script_preview.setStyleSheet("""
+            QTextEdit {
+                background-color: #fafafa;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 13px;
+                color: #333;
+                selection-background-color: #e3f2fd;
+                selection-color: #1565c0;
+            }
+            QTextEdit:focus {
+                border-color: #90caf9;
+                background-color: #ffffff;
+            }
+        """)
+        preview_layout.addWidget(self._script_preview, 1)
 
-        save_layout = QHBoxLayout()
-        self._validate_btn = QPushButton("验证代码")
+        # 操作按钮区域
+        btn_container = QWidget()
+        btn_container.setStyleSheet("""
+            QWidget {
+                background-color: #f8f9fa;
+                border-radius: 8px;
+                padding: 4px;
+            }
+        """)
+        btn_layout = QHBoxLayout(btn_container)
+        btn_layout.setSpacing(10)
+        btn_layout.setContentsMargins(12, 10, 12, 10)
+
+        # 代码操作按钮组
+        code_ops_label = QLabel("代码操作:")
+        code_ops_label.setStyleSheet("font-size: 12px; color: #616161; font-weight: 500;")
+        btn_layout.addWidget(code_ops_label)
+
+        self._validate_btn = QPushButton("🔍 验证代码")
         self._validate_btn.clicked.connect(self._validate_script)
         self._validate_btn.setEnabled(False)
-        style_manager.apply_style(self._validate_btn, "button_secondary")
-        save_layout.addWidget(self._validate_btn)
+        self._validate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e3f2fd;
+                color: #1565c0;
+                border: 1px solid #90caf9;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+            }
+            QPushButton:disabled {
+                background-color: #f5f5f5;
+                color: #bdbdbd;
+                border-color: #e0e0e0;
+            }
+        """)
+        btn_layout.addWidget(self._validate_btn)
 
-        self._ai_fix_btn = QPushButton("AI修复代码")
+        self._ai_fix_btn = QPushButton("🔧 AI修复")
         self._ai_fix_btn.clicked.connect(self._ai_fix_script)
         self._ai_fix_btn.setEnabled(False)
-        style_manager.apply_style(self._ai_fix_btn, "button_secondary")
-        save_layout.addWidget(self._ai_fix_btn)
+        self._ai_fix_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #fff3e0;
+                color: #e65100;
+                border: 1px solid #ffcc80;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #ffe0b2;
+            }
+            QPushButton:disabled {
+                background-color: #f5f5f5;
+                color: #bdbdbd;
+                border-color: #e0e0e0;
+            }
+        """)
+        btn_layout.addWidget(self._ai_fix_btn)
 
-        self._save_file_btn = QPushButton("保存为文件")
+        btn_layout.addSpacing(20)
+
+        # 保存操作按钮组
+        save_ops_label = QLabel("保存操作:")
+        save_ops_label.setStyleSheet("font-size: 12px; color: #616161; font-weight: 500;")
+        btn_layout.addWidget(save_ops_label)
+
+        self._save_file_btn = QPushButton("💾 保存为文件")
         self._save_file_btn.clicked.connect(self._save_to_file)
         self._save_file_btn.setEnabled(False)
-        style_manager.apply_style(self._save_file_btn, "button_primary")
-        save_layout.addWidget(self._save_file_btn)
+        self._save_file_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e8f5e9;
+                color: #2e7d32;
+                border: 1px solid #a5d6a7;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+            }
+            QPushButton:disabled {
+                background-color: #f5f5f5;
+                color: #bdbdbd;
+                border-color: #e0e0e0;
+            }
+        """)
+        btn_layout.addWidget(self._save_file_btn)
 
-        self._copy_btn = QPushButton("复制到剪贴板")
+        self._copy_btn = QPushButton("📋 复制代码")
         self._copy_btn.clicked.connect(self._copy_script)
         self._copy_btn.setEnabled(False)
-        style_manager.apply_style(self._copy_btn, "button_secondary")
-        save_layout.addWidget(self._copy_btn)
+        self._copy_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f3e5f5;
+                color: #7b1fa2;
+                border: 1px solid #ce93d8;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #e1bee7;
+            }
+            QPushButton:disabled {
+                background-color: #f5f5f5;
+                color: #bdbdbd;
+                border-color: #e0e0e0;
+            }
+        """)
+        btn_layout.addWidget(self._copy_btn)
 
-        self._help_btn = QPushButton("执行帮助")
+        btn_layout.addStretch()
+
+        self._help_btn = QPushButton("❓ 执行帮助")
         self._help_btn.clicked.connect(self._show_execution_help)
-        style_manager.apply_style(self._help_btn, "button_secondary")
-        save_layout.addWidget(self._help_btn)
+        self._help_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #eceff1;
+                color: #546e7a;
+                border: 1px solid #b0bec5;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #cfd8dc;
+            }
+        """)
+        btn_layout.addWidget(self._help_btn)
 
-        save_layout.addStretch()
-        preview_layout.addLayout(save_layout)
+        preview_layout.addWidget(btn_container)
 
-        style_manager.apply_style(preview_group, "group_box")
-        self.add_widget(preview_group)
+        self.add_widget(preview_group, 1)
 
     def _show_execution_help(self) -> None:
         help_text = """<h3>测试脚本执行指南</h3>

@@ -362,6 +362,64 @@ class TestCasePage(BasePage):
         self._load_ai_models()
 
     def _init_content(self) -> None:
+        # 流程说明区域
+        flow_tips = QWidget()
+        flow_tips.setStyleSheet("""
+            QWidget {
+                background-color: #f8f9fa;
+                border: 1px solid #e9ecef;
+                border-radius: 8px;
+            }
+        """)
+        flow_layout = QHBoxLayout(flow_tips)
+        flow_layout.setSpacing(20)
+        flow_layout.setContentsMargins(15, 10, 15, 10)
+
+        # 步骤1: 输入接口文档
+        step1 = QLabel("① 输入接口文档")
+        step1.setStyleSheet("font-size: 13px; color: #2e7d32; font-weight: bold;")
+        step1.setToolTip("编辑或上传接口文档，支持 Markdown、JSON、YAML 等格式")
+        flow_layout.addWidget(step1)
+
+        arrow1 = QLabel("→")
+        arrow1.setStyleSheet("color: #adb5bd; font-size: 14px;")
+        flow_layout.addWidget(arrow1)
+
+        # 步骤2: 配置生成参数
+        step2 = QLabel("② 配置生成参数")
+        step2.setStyleSheet("font-size: 13px; color: #7b1fa2; font-weight: bold;")
+        step2.setToolTip("选择 AI 模型并配置测试维度")
+        flow_layout.addWidget(step2)
+
+        arrow2 = QLabel("→")
+        arrow2.setStyleSheet("color: #adb5bd; font-size: 14px;")
+        flow_layout.addWidget(arrow2)
+
+        # 步骤3: 生成测试用例
+        step3 = QLabel("③ 生成测试用例")
+        step3.setStyleSheet("font-size: 13px; color: #1565c0; font-weight: bold;")
+        step3.setToolTip("AI 将根据接口文档自动生成测试用例")
+        flow_layout.addWidget(step3)
+
+        arrow3 = QLabel("→")
+        arrow3.setStyleSheet("color: #adb5bd; font-size: 14px;")
+        flow_layout.addWidget(arrow3)
+
+        # 步骤4: 管理用例
+        step4 = QLabel("④ 管理用例")
+        step4.setStyleSheet("font-size: 13px; color: #e65100; font-weight: bold;")
+        step4.setToolTip("保存历史记录或查看历史生成的用例")
+        flow_layout.addWidget(step4)
+
+        flow_layout.addStretch()
+
+        # 添加提示标签
+        tip_label = QLabel("💡 提示: 按流程顺序操作，可快速生成完整的测试用例")
+        tip_label.setStyleSheet("font-size: 12px; color: #6c757d;")
+        flow_layout.addWidget(tip_label)
+
+        self.add_widget(flow_tips)
+
         self._main_bar = QWidget()
         self._main_bar.setObjectName("main_bar")
         self._main_bar.setStyleSheet("""
@@ -375,8 +433,15 @@ class TestCasePage(BasePage):
         main_layout.setContentsMargins(15, 12, 15, 12)
 
         input_section = QWidget()
+        input_section.setStyleSheet("""
+            QWidget {
+                background-color: #e8f5e9;
+                border-radius: 8px;
+                padding: 4px;
+            }
+        """)
         input_layout = QHBoxLayout(input_section)
-        input_layout.setContentsMargins(0, 0, 0, 0)
+        input_layout.setContentsMargins(8, 6, 8, 6)
         input_layout.setSpacing(8)
 
         self._edit_doc_btn = QPushButton("编辑文档")
@@ -420,8 +485,15 @@ class TestCasePage(BasePage):
         main_layout.addWidget(arrow_label)
 
         generate_section = QWidget()
+        generate_section.setStyleSheet("""
+            QWidget {
+                background-color: #f3e5f5;
+                border-radius: 8px;
+                padding: 4px;
+            }
+        """)
         generate_layout = QHBoxLayout(generate_section)
-        generate_layout.setContentsMargins(0, 0, 0, 0)
+        generate_layout.setContentsMargins(8, 6, 8, 6)
         generate_layout.setSpacing(8)
 
         self._model_combo = QComboBox()
@@ -491,8 +563,15 @@ class TestCasePage(BasePage):
         main_layout.addWidget(arrow_label2)
 
         manage_section = QWidget()
+        manage_section.setStyleSheet("""
+            QWidget {
+                background-color: #fff3e0;
+                border-radius: 8px;
+                padding: 4px;
+            }
+        """)
         manage_layout = QHBoxLayout(manage_section)
-        manage_layout.setContentsMargins(0, 0, 0, 0)
+        manage_layout.setContentsMargins(8, 6, 8, 6)
         manage_layout.setSpacing(8)
 
         self._save_history_btn = QPushButton("保存历史")
@@ -628,7 +707,7 @@ class TestCasePage(BasePage):
                 background-color: #ffffff;
                 border: 1px solid #e0e0e0;
                 border-radius: 8px;
-                margin-top: 12px;
+                margin-top: 20px;
                 padding-top: 8px;
                 font-size: 14px;
                 font-weight: bold;
