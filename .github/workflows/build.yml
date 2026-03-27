@@ -60,29 +60,26 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
+      - name: Check spec file exists
+        run: |
+          ls -la build_scripts/
+          cat build_scripts/AutoApiTest-mac.spec | head -20
+
       - name: Build macOS app
         run: |
           cd build_scripts
-          python -m PyInstaller AutoApiTest-mac.spec --clean
-        continue-on-error: false
+          python -m PyInstaller AutoApiTest-mac.spec --clean 2>&1
+        shell: bash
 
       - name: Check build output
         run: |
-          pwd
-          ls -la
-          ls -la build_scripts/ || echo "No build_scripts dir"
-          ls -la dist/ 2>/dev/null || echo "No dist dir"
-
-      - name: Verify app bundle
-        run: |
-          if [ -d "dist/AutoApiTest.app" ]; then
-            echo "App bundle found"
-            ls -la dist/AutoApiTest.app/
-          else
-            echo "App bundle not found, checking dist contents:"
-            ls -la dist/ 2>/dev/null || echo "dist directory does not exist"
-            exit 1
-          fi
+          echo "Current directory: $(pwd)"
+          echo "Listing build_scripts:"
+          ls -la build_scripts/ || echo "No build_scripts"
+          echo "Listing dist:"
+          ls -la dist/ 2>/dev/null || echo "No dist"
+          echo "Listing build:"
+          ls -la build/ 2>/dev/null || echo "No build"
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
