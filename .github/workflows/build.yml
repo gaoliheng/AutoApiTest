@@ -1,0 +1,207 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - ci-cd
+      - master
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Windows executable
+        run: |
+          cd build_scripts
+          python build.py
+        shell: powershell
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: dist/AutoApiTest.exe
+          retention-days: 30
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Create macOS spec file
+        run: |
+          cat > build_scripts/AutoApiTest-mac.spec << 'EOF'
+# -*- mode: python ; coding: utf-8 -*-
+
+block_cipher = None
+
+a = Analysis(
+    ['../src/main.py'],
+    pathex=['../'],
+    binaries=[],
+    datas=[
+        ('../src', 'src'),
+        ('../data', 'data'),
+    ],
+    hiddenimports=[
+        'PyQt6.QtCore',
+        'PyQt6.QtGui',
+        'PyQt6.QtWidgets',
+        'httpx',
+        'openai',
+        'yaml',
+        'pytest',
+        'allure',
+        'jsonpath_ng',
+        'jsonpath_ng.ext',
+        'ui',
+        'ui.main_window',
+        'ui.pages',
+        'ui.pages.base_page',
+        'ui.pages.test_case_page',
+        'ui.pages.test_script_page',
+        'ui.pages.ai_model_page',
+        'core',
+        'core.test_case_service',
+        'core.test_script_service',
+        'core.ai_model_service',
+        'core.export_service',
+        'core.code_validator',
+        'models',
+        'models.test_case',
+        'models.test_script',
+        'models.ai_model',
+        'models.database',
+        'ai',
+        'ai.client',
+        'ai.prompts',
+        'utils',
+        'utils.config',
+        'utils.logger',
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='AutoApiTest',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=None,
+)
+
+app = BUNDLE(
+    exe,
+    name='AutoApiTest.app',
+    icon=None,
+    bundle_identifier='com.autotest.AutoApiTest',
+    info_plist={
+        'CFBundleName': 'AutoApiTest',
+        'CFBundleDisplayName': 'AutoApiTest',
+        'CFBundleIdentifier': 'com.autotest.AutoApiTest',
+        'CFBundleVersion': '1.0.0',
+        'CFBundleShortVersionString': '1.0.0',
+        'CFBundlePackageType': 'APPL',
+        'CFBundleExecutable': 'AutoApiTest',
+        'LSMinimumSystemVersion': '10.13',
+        'NSHighResolutionCapable': True,
+    },
+)
+EOF
+
+      - name: Build macOS app
+        run: |
+          cd build_scripts
+          python -m PyInstaller AutoApiTest-mac.spec --clean
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: dist/AutoApiTest.app
+          retention-days: 30
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-exe
+          path: release
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-app
+          path: release
+
+      - name: Create DMG (macOS)
+        run: |
+          if [ -d "release/AutoApiTest.app" ]; then
+            hdiutil create -volname "AutoApiTest" -srcfolder "release/AutoApiTest.app" -ov -format UDZO "release/AutoApiTest.dmg"
+          fi
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release/AutoApiTest.exe
+            release/AutoApiTest.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
