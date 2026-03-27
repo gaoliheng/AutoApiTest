@@ -60,26 +60,42 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Check spec file exists
+      - name: Check files before build
         run: |
+          echo "=== Project structure ==="
+          ls -la
+          echo "=== build_scripts directory ==="
           ls -la build_scripts/
-          cat build_scripts/AutoApiTest-mac.spec | head -20
+          echo "=== src directory ==="
+          ls -la src/
 
       - name: Build macOS app
         run: |
           cd build_scripts
-          python -m PyInstaller AutoApiTest-mac.spec --clean 2>&1
+          echo "=== Starting PyInstaller build ==="
+          python -m PyInstaller AutoApiTest-mac.spec --clean || {
+            echo "=== PyInstaller failed ==="
+            exit 1
+          }
         shell: bash
 
       - name: Check build output
         run: |
-          echo "Current directory: $(pwd)"
-          echo "Listing build_scripts:"
-          ls -la build_scripts/ || echo "No build_scripts"
-          echo "Listing dist:"
+          echo "=== Current directory: $(pwd) ==="
+          echo "=== build_scripts contents ==="
+          ls -la build_scripts/
+          echo "=== build_scripts/dist contents ==="
+          ls -la build_scripts/dist/ 2>/dev/null || echo "No build_scripts/dist"
+          echo "=== dist contents ==="
           ls -la dist/ 2>/dev/null || echo "No dist"
-          echo "Listing build:"
-          ls -la build/ 2>/dev/null || echo "No build"
+
+      - name: Move dist to root
+        run: |
+          if [ -d "build_scripts/dist" ]; then
+            mv build_scripts/dist .
+            echo "Moved dist to root"
+          fi
+          ls -la dist/
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
