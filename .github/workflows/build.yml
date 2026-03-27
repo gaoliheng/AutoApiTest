@@ -9,6 +9,9 @@ on:
     types: [created]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -73,6 +76,8 @@ jobs:
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
+    permissions:
+      contents: write
     steps:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
@@ -97,6 +102,5 @@ jobs:
         with:
           files: |
             release/AutoApiTest.exe
-            release/AutoApiTest.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
