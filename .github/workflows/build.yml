@@ -66,42 +66,40 @@ jobs:
           ls -la
           echo "=== build_scripts directory ==="
           ls -la build_scripts/
-          echo "=== src directory ==="
-          ls -la src/
 
       - name: Build macOS app
         run: |
           cd build_scripts
           echo "=== Starting PyInstaller build ==="
-          python -m PyInstaller AutoApiTest-mac.spec --clean || {
-            echo "=== PyInstaller failed ==="
-            exit 1
-          }
+          python -m PyInstaller AutoApiTest-mac.spec --clean
         shell: bash
 
       - name: Check build output
         run: |
           echo "=== Current directory: $(pwd) ==="
-          echo "=== build_scripts contents ==="
           ls -la build_scripts/
-          echo "=== build_scripts/dist contents ==="
           ls -la build_scripts/dist/ 2>/dev/null || echo "No build_scripts/dist"
-          echo "=== dist contents ==="
-          ls -la dist/ 2>/dev/null || echo "No dist"
 
-      - name: Move dist to root
+      - name: Move dist to root and package
         run: |
           if [ -d "build_scripts/dist" ]; then
             mv build_scripts/dist .
             echo "Moved dist to root"
           fi
           ls -la dist/
+          if [ -d "dist/AutoApiTest.app" ]; then
+            echo "=== Creating tar.gz package ==="
+            cd dist
+            tar -czf AutoApiTest-macOS.tar.gz AutoApiTest.app
+            cd ..
+            ls -la dist/
+          fi
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-app
-          path: dist/AutoApiTest.app
+          path: dist/AutoApiTest-macOS.tar.gz
           retention-days: 30
 
   release:
@@ -123,6 +121,15 @@ jobs:
           name: macos-app
           path: release
 
+      - name: Extract and repackage macOS
+        run: |
+          cd release
+          if [ -f "AutoApiTest-macOS.tar.gz" ]; then
+            tar -xzf AutoApiTest-macOS.tar.gz
+            rm AutoApiTest-macOS.tar.gz
+          fi
+          ls -la
+
       - name: Create DMG (macOS)
         run: |
           if [ -d "release/AutoApiTest.app" ]; then
@@ -136,5 +143,6 @@ jobs:
         with:
           files: |
             release/AutoApiTest.exe
+            release/AutoApiTest.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
